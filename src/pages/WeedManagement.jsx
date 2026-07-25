@@ -2,6 +2,7 @@ import { useState } from 'react'
 import Sidebar from '../components/Sidebar'
 import DashboardHeader from '../components/DashboardHeader'
 import { FiShield, FiCheckCircle, FiInfo, FiChevronDown, FiSun, FiDroplet } from 'react-icons/fi'
+import { useLanguage } from '../i18n/useLanguage'
 
 const cropData = {
   Tomato: {
@@ -209,23 +210,24 @@ const cropList = Object.keys(cropData)
 export default function WeedManagement() {
   const [selectedCrop, setSelectedCrop] = useState('Tomato')
   const [expanded, setExpanded] = useState(null)
+  const { t } = useLanguage()
   const data = cropData[selectedCrop]
 
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
-        <DashboardHeader title="Weed Management" />
+        <DashboardHeader title={t('weed.title')} />
         <main className="flex-1 p-6 overflow-y-auto">
           <div className="max-w-5xl mx-auto space-y-6">
             {/* Hero Banner */}
             <div className="bg-gradient-to-r from-gray-800 to-gray-600 rounded-2xl p-6 text-white">
               <div className="flex items-center gap-3 mb-2">
                 <FiShield className="text-2xl" />
-                <h2 className="text-xl font-bold">Weed Mats & Mulching Sheets</h2>
-              </div>
-              <p className="text-sm text-gray-200">
-                Control unwanted grass and plants with the right mulching solution for your crop.
+              <h2 className="text-xl font-bold">{t('weed.subtitle')}</h2>
+            </div>
+            <p className="text-sm text-gray-200">
+              {t('weed.desc')}
               </p>
             </div>
 

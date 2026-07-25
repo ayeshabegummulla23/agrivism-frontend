@@ -1,15 +1,7 @@
 import Sidebar from '../components/Sidebar'
 import DashboardHeader from '../components/DashboardHeader'
 import { FiCloud, FiDroplet, FiWind, FiSun, FiSunset, FiAlertTriangle } from 'react-icons/fi'
-
-const weatherDetails = [
-  { icon: <FiSun />, label: 'Temperature', value: '28°C', sub: 'Feels like 31°C', color: 'bg-orange-50 text-orange-600' },
-  { icon: <FiDroplet />, label: 'Humidity', value: '65%', sub: 'Moderate', color: 'bg-blue-50 text-blue-600' },
-  { icon: <FiCloud />, label: 'Rain Chance', value: '40%', sub: 'Light showers expected', color: 'bg-cyan-50 text-cyan-600' },
-  { icon: <FiWind />, label: 'Wind Speed', value: '12 km/h', sub: 'Direction: SW', color: 'bg-gray-100 text-gray-600' },
-  { icon: <FiSun />, label: 'Sunrise', value: '6:15 AM', sub: 'Dawn at 5:50 AM', color: 'bg-yellow-50 text-yellow-600' },
-  { icon: <FiSunset />, label: 'Sunset', value: '6:45 PM', sub: 'Dusk at 7:10 PM', color: 'bg-purple-50 text-purple-600' },
-]
+import { useLanguage } from '../i18n/useLanguage'
 
 const forecast = [
   { day: 'Mon', temp: '28°C', icon: '🌤' },
@@ -22,17 +14,28 @@ const forecast = [
 ]
 
 export default function Weather() {
+  const { t } = useLanguage()
+
+  const weatherDetails = [
+    { icon: <FiSun />, label: t('weather.temperature'), value: '28°C', sub: 'Feels like 31°C', color: 'bg-orange-50 text-orange-600' },
+    { icon: <FiDroplet />, label: t('weather.humidity'), value: '65%', sub: 'Moderate', color: 'bg-blue-50 text-blue-600' },
+    { icon: <FiCloud />, label: t('weather.rainChance'), value: '40%', sub: 'Light showers expected', color: 'bg-cyan-50 text-cyan-600' },
+    { icon: <FiWind />, label: t('weather.windSpeed'), value: '12 km/h', sub: 'Direction: SW', color: 'bg-gray-100 text-gray-600' },
+    { icon: <FiSun />, label: t('weather.sunrise'), value: '6:15 AM', sub: 'Dawn at 5:50 AM', color: 'bg-yellow-50 text-yellow-600' },
+    { icon: <FiSunset />, label: t('weather.sunset'), value: '6:45 PM', sub: 'Dusk at 7:10 PM', color: 'bg-purple-50 text-purple-600' },
+  ]
+
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
-        <DashboardHeader title="Weather Forecast" />
+        <DashboardHeader title={t('weather.title')} />
         <main className="flex-1 p-6 overflow-y-auto">
           {/* Alert */}
           <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 mb-6 flex items-center gap-3">
             <FiAlertTriangle className="text-orange-500 text-xl shrink-0" />
             <div>
-              <p className="font-semibold text-orange-800 text-sm">Weather Alert</p>
+              <p className="font-semibold text-orange-800 text-sm">{t('weather.alerts')}</p>
               <p className="text-orange-700 text-sm">Heavy rainfall expected on Wednesday. Plan irrigation accordingly.</p>
             </div>
           </div>
@@ -41,7 +44,7 @@ export default function Weather() {
           <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-8 text-white mb-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-blue-100 text-sm">Current Weather — Kaveripattinam</p>
+                <p className="text-blue-100 text-sm">{t('weather.currentWeather')} — Kaveripattinam</p>
                 <p className="text-5xl font-bold mt-2">28°C</p>
                 <p className="text-blue-100 mt-1">Partly Cloudy</p>
               </div>
@@ -51,7 +54,7 @@ export default function Weather() {
 
           {/* 7-Day Forecast */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
-            <h3 className="font-semibold text-gray-900 mb-4">7-Day Forecast</h3>
+            <h3 className="font-semibold text-gray-900 mb-4">{t('weather.forecast')}</h3>
             <div className="grid grid-cols-7 gap-3">
               {forecast.map((f) => (
                 <div key={f.day} className="text-center p-3 bg-gray-50 rounded-xl">

@@ -2,23 +2,24 @@ import { useState } from 'react'
 import Sidebar from '../components/Sidebar'
 import DashboardHeader from '../components/DashboardHeader'
 import { FiUser, FiBell, FiGlobe, FiMoon, FiChevronRight, FiLogOut } from 'react-icons/fi'
+import { useLanguage } from '../i18n/useLanguage'
 
 export default function Settings() {
   const [darkMode, setDarkMode] = useState(false)
   const [notifications, setNotifications] = useState(true)
-  const [language, setLanguage] = useState('en')
+  const { lang, changeLang, t, languages } = useLanguage()
 
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
-        <DashboardHeader title="Settings" />
+        <DashboardHeader title={t('settings.title')} />
         <main className="flex-1 p-6 overflow-y-auto">
           <div className="max-w-2xl mx-auto space-y-6">
             {/* Profile Section */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <FiUser className="text-primary" /> Profile
+                <FiUser className="text-primary" /> {t('settings.profile')}
               </h3>
               <div className="space-y-4">
                 <div className="flex items-center gap-4">
@@ -31,7 +32,7 @@ export default function Settings() {
                     <p className="text-sm text-gray-500">+91 98765 43210</p>
                   </div>
                 </div>
-                <button className="text-primary text-sm font-medium hover:underline">Edit Profile</button>
+                <button className="text-primary text-sm font-medium hover:underline">{t('common.save')}</button>
               </div>
             </div>
 
@@ -41,7 +42,7 @@ export default function Settings() {
                 <div className="flex items-center gap-3">
                   <FiBell className="text-primary text-lg" />
                   <div>
-                    <p className="font-medium text-gray-900">Notifications</p>
+                    <p className="font-medium text-gray-900">{t('settings.notifications')}</p>
                     <p className="text-sm text-gray-500">Receive weather alerts and price updates</p>
                   </div>
                 </div>
@@ -60,20 +61,18 @@ export default function Settings() {
                 <div className="flex items-center gap-3">
                   <FiGlobe className="text-primary text-lg" />
                   <div>
-                    <p className="font-medium text-gray-900">Language</p>
+                    <p className="font-medium text-gray-900">{t('settings.language')}</p>
                     <p className="text-sm text-gray-500">Select your preferred language</p>
                   </div>
                 </div>
                 <select
-                  value={language}
-                  onChange={(e) => setLanguage(e.target.value)}
+                  value={lang}
+                  onChange={(e) => changeLang(e.target.value)}
                   className="px-4 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary/30 bg-white"
                 >
-                  <option value="en">English</option>
-                  <option value="ta">Tamil</option>
-                  <option value="hi">Hindi</option>
-                  <option value="te">Telugu</option>
-                  <option value="kn">Kannada</option>
+                  {languages.map((l) => (
+                    <option key={l.code} value={l.code}>{l.native} ({l.label})</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -99,7 +98,7 @@ export default function Settings() {
 
             {/* Account */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
-              <h3 className="font-semibold text-gray-900">Account</h3>
+              <h3 className="font-semibold text-gray-900">{t('settings.account')}</h3>
               {['Change Password', 'Privacy Settings', 'Delete Account'].map((item) => (
                 <button key={item} className="w-full flex items-center justify-between py-3 border-b border-gray-50 last:border-0 hover:text-primary transition-colors">
                   <span className="text-sm text-gray-700">{item}</span>
@@ -110,7 +109,7 @@ export default function Settings() {
 
             {/* Logout */}
             <button className="w-full bg-red-50 text-red-600 font-semibold py-3 rounded-xl hover:bg-red-100 transition-colors flex items-center justify-center gap-2">
-              <FiLogOut /> Logout
+              <FiLogOut /> {t('nav.logout')}
             </button>
           </div>
         </main>

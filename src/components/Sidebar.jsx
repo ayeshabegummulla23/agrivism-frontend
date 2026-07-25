@@ -4,32 +4,35 @@ import {
   FiHome, FiCloud, FiDroplet, FiTrendingUp, FiCamera,
   FiTool, FiTarget, FiBarChart2, FiSettings,
   FiLogOut, FiChevronLeft, FiMenu, FiMap, FiUser, FiZap,
-  FiShield, FiPhone
+  FiShield, FiPhone, FiGlobe
 } from 'react-icons/fi'
 import { GiPlantRoots } from 'react-icons/gi'
-
-const menuItems = [
-  { icon: <FiHome />, label: 'Dashboard', path: '/dashboard' },
-  { icon: <FiMap />, label: 'Land Registration', path: '/register-farm' },
-  { icon: <FiUser />, label: 'Farm Profile', path: '/farm-profile' },
-  { icon: <FiCloud />, label: 'Weather', path: '/weather' },
-  { icon: <FiDroplet />, label: 'Water Management', path: '/water-management' },
-  { icon: <FiTrendingUp />, label: 'Market Prices', path: '/market-prices' },
-  { icon: <FiTool />, label: 'Problem Solver', path: '/problem-solver' },
-  { icon: <FiCamera />, label: 'Disease Detection', path: '/disease-detection' },
-  { icon: <FiTarget />, label: 'Crop Recommendation', path: '/crop-recommendation' },
-  { icon: <FiZap />, label: 'Fertilizer Guide', path: '/fertilizer' },
-  { icon: <FiShield />, label: 'Weed Management', path: '/weed-management' },
-  { icon: <FiShield />, label: 'Crop Protection', path: '/crop-protection' },
-  { icon: <FiPhone />, label: 'VALI Video Call', path: '/ai-assistant' },
-  { icon: <FiBarChart2 />, label: 'Analytics', path: '/analytics' },
-  { icon: <FiSettings />, label: 'Settings', path: '/settings' },
-]
+import { useLanguage } from '../i18n/useLanguage'
 
 export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false)
+  const [showLang, setShowLang] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
+  const { lang, changeLang, t, languages } = useLanguage()
+
+  const menuItems = [
+    { icon: <FiHome />, label: t('nav.dashboard'), path: '/dashboard' },
+    { icon: <FiMap />, label: t('nav.landRegistration'), path: '/register-farm' },
+    { icon: <FiUser />, label: t('nav.farmProfile'), path: '/farm-profile' },
+    { icon: <FiCloud />, label: t('nav.weather'), path: '/weather' },
+    { icon: <FiDroplet />, label: t('nav.waterManagement'), path: '/water-management' },
+    { icon: <FiTrendingUp />, label: t('nav.marketPrices'), path: '/market-prices' },
+    { icon: <FiTool />, label: t('nav.problemSolver'), path: '/problem-solver' },
+    { icon: <FiCamera />, label: t('nav.diseaseDetection'), path: '/disease-detection' },
+    { icon: <FiTarget />, label: t('nav.cropRecommendation'), path: '/crop-recommendation' },
+    { icon: <FiZap />, label: t('nav.fertilizerGuide'), path: '/fertilizer' },
+    { icon: <FiShield />, label: t('nav.weedManagement'), path: '/weed-management' },
+    { icon: <FiShield />, label: t('nav.cropProtection'), path: '/crop-protection' },
+    { icon: <FiPhone />, label: t('nav.valiVideoCall'), path: '/ai-assistant' },
+    { icon: <FiBarChart2 />, label: t('nav.analytics'), path: '/analytics' },
+    { icon: <FiSettings />, label: t('nav.settings'), path: '/settings' },
+  ]
 
   return (
     <>
@@ -74,14 +77,45 @@ export default function Sidebar() {
           })}
         </nav>
 
+        {/* Language Switcher */}
+        {!collapsed && (
+          <div className="px-3 py-2 border-t border-gray-100 relative">
+            <button
+              onClick={() => setShowLang(!showLang)}
+              className="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-sm text-gray-600 hover:bg-primary/10 hover:text-primary transition-all"
+            >
+              <FiGlobe className="text-lg" />
+              <span>{languages.find((l) => l.code === lang)?.native}</span>
+            </button>
+            {showLang && (
+              <div className="absolute bottom-full left-3 right-3 mb-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden z-50">
+                {languages.map((l) => (
+                  <button
+                    key={l.code}
+                    onClick={() => { changeLang(l.code); setShowLang(false) }}
+                    className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
+                      lang === l.code
+                        ? 'bg-primary text-white'
+                        : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <span className="font-medium">{l.native}</span>
+                    <span className="text-xs text-gray-400 ml-2">{l.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="p-3 border-t border-gray-100">
           <button
             onClick={() => navigate('/')}
             className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-red-50 hover:text-red-600 transition-all w-full"
-            title={collapsed ? 'Logout' : undefined}
+            title={collapsed ? t('nav.logout') : undefined}
           >
             <FiLogOut className="text-lg" />
-            {!collapsed && <span>Logout</span>}
+            {!collapsed && <span>{t('nav.logout')}</span>}
           </button>
         </div>
       </aside>

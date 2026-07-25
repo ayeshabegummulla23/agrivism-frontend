@@ -3,6 +3,7 @@ import Sidebar from '../components/Sidebar'
 import DashboardHeader from '../components/DashboardHeader'
 import { FiMic, FiMicOff, FiPhone, FiPhoneOff, FiSettings, FiVolume2, FiVolumeX } from 'react-icons/fi'
 import { GiPlantRoots } from 'react-icons/gi'
+import { useLanguage } from '../i18n/useLanguage'
 
 const suggestedQuestions = [
   'How much water does my crop need today?',
@@ -58,14 +59,14 @@ function TypewriterText({ text, ...props }) {
 }
 
 export default function AIAssistant() {
+  const { t, lang, changeLang, languages } = useLanguage()
   const [callActive, setCallActive] = useState(false)
-  const [callState, setCallState] = useState('idle') // idle, listening, speaking, thinking
-  const [subtitle, setSubtitle] = useState('Press the call button to start a conversation with VALI.')
+  const [callState, setCallState] = useState('idle')
+  const [subtitle, setSubtitle] = useState('')
   const [callDuration, setCallDuration] = useState(0)
   const [isMuted, setIsMuted] = useState(false)
   const [isSpeakerOn, setIsSpeakerOn] = useState(true)
   const [showSettings, setShowSettings] = useState(false)
-  const [language, setLanguage] = useState('English')
   const durationRef = useRef(null)
 
   useEffect(() => {
@@ -96,7 +97,7 @@ export default function AIAssistant() {
     setCallActive(false)
     setCallDuration(0)
     setCallState('idle')
-    setSubtitle('Call ended. Press the call button to start a new conversation.')
+    setSubtitle(t('ai.callEnded'))
   }
 
   const handleQuestion = (question) => {
@@ -135,10 +136,10 @@ export default function AIAssistant() {
 
   const getStateLabel = () => {
     switch (callState) {
-      case 'speaking': return 'VALI is speaking...'
-      case 'listening': return 'Listening to you...'
-      case 'thinking': return 'Thinking...'
-      default: return callActive ? 'Connected' : 'Ready'
+      case 'speaking': return t('ai.isSpeaking')
+      case 'listening': return t('ai.listening')
+      case 'thinking': return t('ai.thinking')
+      default: return callActive ? t('ai.connected') : t('ai.ready')
     }
   }
 
@@ -155,9 +156,8 @@ export default function AIAssistant() {
     <div className="flex min-h-screen bg-gray-900">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
-        <DashboardHeader title="VALI Video Call" />
+        <DashboardHeader title={t('ai.title')} />
         <main className="flex-1 flex flex-col items-center justify-center p-6 relative overflow-hidden">
-          {/* Background gradient */}
           <div className="absolute inset-0 bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900" />
 
           <div className="relative z-10 flex flex-col items-center w-full max-w-2xl">
@@ -178,7 +178,6 @@ export default function AIAssistant() {
 
             {/* Avatar */}
             <div className="relative mb-8">
-              {/* Speaking rings */}
               {callState === 'speaking' && (
                 <>
                   <div className="absolute inset-0 rounded-full border-2 border-green-500/30 animate-ping" style={{ animationDuration: '2s' }} />
@@ -187,22 +186,18 @@ export default function AIAssistant() {
                 </>
               )}
 
-              {/* Listening glow */}
               {callState === 'listening' && (
                 <div className="absolute inset-0 rounded-full bg-blue-500/20 animate-pulse" />
               )}
 
-              {/* Thinking spin */}
               {callState === 'thinking' && (
                 <div className="absolute -inset-3 rounded-full border-2 border-amber-500 border-t-transparent animate-spin" />
               )}
 
-              {/* Main avatar */}
               <div className={`w-40 h-40 md:w-52 md:h-52 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center transition-all duration-500 ${getAvatarClasses()} border-4 ${getRingColor()}`}>
                 <GiPlantRoots className="text-white text-6xl md:text-7xl" />
               </div>
 
-              {/* Mic indicator */}
               {callState === 'listening' && (
                 <div className="absolute bottom-2 right-2 w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center animate-bounce">
                   <FiMic className="text-white" />
@@ -212,8 +207,8 @@ export default function AIAssistant() {
 
             {/* VALI Name */}
             <h1 className="text-2xl font-bold text-white mb-1">VALI</h1>
-            <p className="text-sm text-gray-400 mb-2">Virtual Agriculture & Land Intelligence</p>
-            <p className="text-xs text-gray-500 mb-6">Powered by AgriVISM</p>
+            <p className="text-sm text-gray-400 mb-2">{t('ai.subtitle')}</p>
+            <p className="text-xs text-gray-500 mb-6">{t('ai.poweredBy')}</p>
 
             {/* Subtitle Area */}
             <div className="w-full bg-gray-800/80 backdrop-blur-sm rounded-2xl p-5 mb-6 min-h-[80px] border border-gray-700/50">
@@ -221,25 +216,22 @@ export default function AIAssistant() {
                 {callActive ? (
                   <TypewriterText text={subtitle} speed={20} />
                 ) : (
-                  subtitle
+                  subtitle || t('ai.callEnded')
                 )}
               </p>
             </div>
 
             {/* Call Controls */}
             <div className="flex items-center gap-4 mb-8">
-              {/* Mute */}
               <button
                 onClick={() => setIsMuted(!isMuted)}
                 className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
                   isMuted ? 'bg-red-500/20 text-red-400' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                 }`}
-                title={isMuted ? 'Unmute' : 'Mute'}
               >
                 {isMuted ? <FiMicOff /> : <FiMic />}
               </button>
 
-              {/* Start/End Call */}
               <button
                 onClick={callActive ? endCall : startCall}
                 className={`w-16 h-16 rounded-full flex items-center justify-center transition-all shadow-lg ${
@@ -247,27 +239,22 @@ export default function AIAssistant() {
                     ? 'bg-red-500 hover:bg-red-600 text-white'
                     : 'bg-green-500 hover:bg-green-600 text-white'
                 }`}
-                title={callActive ? 'End Call' : 'Start Call'}
               >
                 {callActive ? <FiPhoneOff className="text-xl" /> : <FiPhone className="text-xl" />}
               </button>
 
-              {/* Speaker */}
               <button
                 onClick={() => setIsSpeakerOn(!isSpeakerOn)}
                 className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
                   !isSpeakerOn ? 'bg-red-500/20 text-red-400' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                 }`}
-                title={isSpeakerOn ? 'Speaker Off' : 'Speaker On'}
               >
                 {isSpeakerOn ? <FiVolume2 /> : <FiVolumeX />}
               </button>
 
-              {/* Settings */}
               <button
                 onClick={() => setShowSettings(!showSettings)}
                 className="w-12 h-12 rounded-full bg-gray-700 text-gray-300 hover:bg-gray-600 flex items-center justify-center transition-all"
-                title="Settings"
               >
                 <FiSettings />
               </button>
@@ -276,28 +263,26 @@ export default function AIAssistant() {
             {/* Settings Panel */}
             {showSettings && (
               <div className="w-full bg-gray-800 rounded-2xl p-5 mb-6 border border-gray-700/50">
-                <h3 className="text-sm font-medium text-gray-300 mb-3">Call Settings</h3>
+                <h3 className="text-sm font-medium text-gray-300 mb-3">{t('ai.settings')}</h3>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-400">Language</span>
+                    <span className="text-sm text-gray-400">{t('ai.language')}</span>
                     <select
-                      value={language}
-                      onChange={(e) => setLanguage(e.target.value)}
+                      value={lang}
+                      onChange={(e) => changeLang(e.target.value)}
                       className="bg-gray-700 text-white text-sm rounded-lg px-3 py-1.5 outline-none border border-gray-600"
                     >
-                      <option>English</option>
-                      <option>Hindi</option>
-                      <option>Telugu</option>
-                      <option>Tamil</option>
-                      <option>Kannada</option>
+                      {languages.map((l) => (
+                        <option key={l.code} value={l.code}>{l.native} ({l.label})</option>
+                      ))}
                     </select>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-400">Voice Speed</span>
+                    <span className="text-sm text-gray-400">{t('ai.voiceSpeed')}</span>
                     <span className="text-sm text-gray-300">Normal</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-400">Auto-translate</span>
+                    <span className="text-sm text-gray-400">{t('ai.autoTranslate')}</span>
                     <span className="text-sm text-green-400">On</span>
                   </div>
                 </div>
@@ -307,7 +292,7 @@ export default function AIAssistant() {
             {/* Quick Questions */}
             {callActive && (
               <div className="w-full">
-                <p className="text-xs text-gray-500 text-center mb-3">Quick Questions</p>
+                <p className="text-xs text-gray-500 text-center mb-3">{t('ai.quickQuestions')}</p>
                 <div className="flex flex-wrap justify-center gap-2">
                   {suggestedQuestions.map((q, i) => (
                     <button

@@ -11,6 +11,7 @@ import { FiMap, FiTarget, FiCalendar, FiTrendingUp, FiShield } from 'react-icons
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 import { useNavigate } from 'react-router-dom'
+import { useLanguage } from '../i18n/useLanguage'
 
 const chartData = [
   { month: 'Jan', expenses: 12000, income: 18000 },
@@ -31,19 +32,20 @@ const recentActivities = [
 
 export default function Dashboard() {
   const navigate = useNavigate()
+  const { t } = useLanguage()
 
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
-        <DashboardHeader title="Dashboard" />
+        <DashboardHeader title={t('dashboard.title')} />
         <main className="flex-1 p-6 space-y-6 overflow-y-auto">
           {/* Stats Row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatsCard label="Total Farms" value="3" icon={<FiMap />} trend={12} />
-            <StatsCard label="Active Crops" value="5" icon={<FiTarget />} trend={8} />
-            <StatsCard label="Days since planting" value="45" icon={<FiCalendar />} />
-            <StatsCard label="Monthly Revenue" value="₹45,000" icon={<FiTrendingUp />} trend={15} />
+            <StatsCard label={t('dashboard.totalFarms')} value="3" icon={<FiMap />} trend={12} />
+            <StatsCard label={t('dashboard.activeCrops')} value="5" icon={<FiTarget />} trend={8} />
+            <StatsCard label={t('dashboard.daysSincePlanting')} value="45" icon={<FiCalendar />} />
+            <StatsCard label={t('dashboard.monthlyRevenue')} value="₹45,000" icon={<FiTrendingUp />} trend={15} />
           </div>
 
           {/* Weather + Water + AI */}
@@ -64,11 +66,11 @@ export default function Dashboard() {
                   <FiShield className="text-xl" />
                 </div>
                 <div>
-                  <p className="font-semibold">Weed Management</p>
-                  <p className="text-xs text-gray-300">Weed mats & mulching sheets</p>
+                  <p className="font-semibold">{t('dashboard.weedManagement')}</p>
+                  <p className="text-xs text-gray-300">{t('dashboard.weedManagementDesc')}</p>
                 </div>
               </div>
-              <p className="text-sm text-gray-300">Control unwanted grass and plants with tailored mulching solutions for your crop.</p>
+              <p className="text-sm text-gray-300">{t('dashboard.weedManagementText')}</p>
             </div>
             <div
               onClick={() => navigate('/crop-protection')}
@@ -79,18 +81,18 @@ export default function Dashboard() {
                   <FiShield className="text-xl" />
                 </div>
                 <div>
-                  <p className="font-semibold">Crop Protection</p>
-                  <p className="text-xs text-blue-100">Grow covers & shields</p>
+                  <p className="font-semibold">{t('dashboard.cropProtection')}</p>
+                  <p className="text-xs text-blue-100">{t('dashboard.cropProtectionDesc')}</p>
                 </div>
               </div>
-              <p className="text-sm text-blue-100">Shield your crops from weather extremes, pests, and environmental stress.</p>
+              <p className="text-sm text-blue-100">{t('dashboard.cropProtectionText')}</p>
             </div>
           </div>
 
           {/* Charts + Notifications */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-              <h3 className="font-semibold text-gray-900 mb-4">Farm Overview</h3>
+              <h3 className="font-semibold text-gray-900 mb-4">{t('dashboard.farmOverview')}</h3>
               <ResponsiveContainer width="100%" height={280}>
                 <AreaChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -107,7 +109,7 @@ export default function Dashboard() {
 
           {/* Market Prices */}
           <div>
-            <h3 className="font-semibold text-gray-900 mb-4">Today&apos;s Market Prices</h3>
+            <h3 className="font-semibold text-gray-900 mb-4">{t('dashboard.todaysMarketPrices')}</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <MarketPriceCard crop="Rice (Paddy)" price={2850} change={3.2} market="Thanjavur Mandi" />
               <MarketPriceCard crop="Cotton" price={6800} change={-1.5} market="Coimbatore Mandi" />
@@ -118,7 +120,7 @@ export default function Dashboard() {
 
           {/* Recent Activities */}
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <h3 className="font-semibold text-gray-900 mb-4">Recent Activities</h3>
+            <h3 className="font-semibold text-gray-900 mb-4">{t('dashboard.recentActivities')}</h3>
             <div className="space-y-3">
               {recentActivities.map((a) => (
                 <div key={a.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
