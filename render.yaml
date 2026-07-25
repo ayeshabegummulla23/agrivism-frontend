@@ -1,0 +1,10 @@
+services:
+  - type: static_site
+    name: agrivism-frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        from: /*
+        to: /index.html
+        status: 200
