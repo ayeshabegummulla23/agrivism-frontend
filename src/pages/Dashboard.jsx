@@ -7,8 +7,10 @@ import MarketPriceCard from '../components/MarketPriceCard'
 import AIAvatarCard from '../components/AIAvatarCard'
 import NotificationCard from '../components/NotificationCard'
 import StatsCard from '../components/StatsCard'
-import { FiMap, FiTarget, FiCalendar, FiTrendingUp } from 'react-icons/fi'
+import { FiMap, FiTarget, FiCalendar, FiTrendingUp, FiShield } from 'react-icons/fi'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+
+import { useNavigate } from 'react-router-dom'
 
 const chartData = [
   { month: 'Jan', expenses: 12000, income: 18000 },
@@ -28,6 +30,8 @@ const recentActivities = [
 ]
 
 export default function Dashboard() {
+  const navigate = useNavigate()
+
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
@@ -42,11 +46,45 @@ export default function Dashboard() {
             <StatsCard label="Monthly Revenue" value="₹45,000" icon={<FiTrendingUp />} trend={15} />
           </div>
 
-          {/* Weather + Water + Market */}
+          {/* Weather + Water + AI */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <WeatherCard />
             <WaterCard />
             <AIAvatarCard />
+          </div>
+
+          {/* Weed Management + Crop Protection */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div
+              onClick={() => navigate('/weed-management')}
+              className="bg-gradient-to-br from-gray-800 to-gray-700 rounded-2xl p-6 shadow-sm border border-gray-600 text-white cursor-pointer hover:shadow-lg transition-all"
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center">
+                  <FiShield className="text-xl" />
+                </div>
+                <div>
+                  <p className="font-semibold">Weed Management</p>
+                  <p className="text-xs text-gray-300">Weed mats & mulching sheets</p>
+                </div>
+              </div>
+              <p className="text-sm text-gray-300">Control unwanted grass and plants with tailored mulching solutions for your crop.</p>
+            </div>
+            <div
+              onClick={() => navigate('/crop-protection')}
+              className="bg-gradient-to-br from-blue-700 to-blue-500 rounded-2xl p-6 shadow-sm border border-blue-400 text-white cursor-pointer hover:shadow-lg transition-all"
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center">
+                  <FiShield className="text-xl" />
+                </div>
+                <div>
+                  <p className="font-semibold">Crop Protection</p>
+                  <p className="text-xs text-blue-100">Grow covers & shields</p>
+                </div>
+              </div>
+              <p className="text-sm text-blue-100">Shield your crops from weather extremes, pests, and environmental stress.</p>
+            </div>
           </div>
 
           {/* Charts + Notifications */}

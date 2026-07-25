@@ -2,8 +2,9 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import {
   FiHome, FiCloud, FiDroplet, FiTrendingUp, FiCamera,
-  FiTool, FiTarget, FiMessageSquare, FiBarChart2, FiSettings,
-  FiLogOut, FiChevronLeft, FiMenu, FiMap, FiUser, FiZap
+  FiTool, FiTarget, FiBarChart2, FiSettings,
+  FiLogOut, FiChevronLeft, FiMenu, FiMap, FiUser, FiZap,
+  FiShield, FiPhone
 } from 'react-icons/fi'
 import { GiPlantRoots } from 'react-icons/gi'
 
@@ -18,7 +19,9 @@ const menuItems = [
   { icon: <FiCamera />, label: 'Disease Detection', path: '/disease-detection' },
   { icon: <FiTarget />, label: 'Crop Recommendation', path: '/crop-recommendation' },
   { icon: <FiZap />, label: 'Fertilizer Guide', path: '/fertilizer' },
-  { icon: <FiMessageSquare />, label: 'VALI Assistant', path: '/ai-assistant' },
+  { icon: <FiShield />, label: 'Weed Management', path: '/weed-management' },
+  { icon: <FiShield />, label: 'Crop Protection', path: '/crop-protection' },
+  { icon: <FiPhone />, label: 'VALI Video Call', path: '/ai-assistant' },
   { icon: <FiBarChart2 />, label: 'Analytics', path: '/analytics' },
   { icon: <FiSettings />, label: 'Settings', path: '/settings' },
 ]

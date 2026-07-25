@@ -12,6 +12,8 @@ import DiseaseDetection from './pages/DiseaseDetection'
 import ProblemSolver from './pages/ProblemSolver'
 import CropRecommendation from './pages/CropRecommendation'
 import FertilizerRecommendation from './pages/FertilizerRecommendation'
+import WeedManagement from './pages/WeedManagement'
+import CropProtection from './pages/CropProtection'
 import AIAssistant from './pages/AIAssistant'
 import Analytics from './pages/Analytics'
 import Settings from './pages/Settings'
@@ -32,6 +34,8 @@ function App() {
       <Route path="/problem-solver" element={<ProblemSolver />} />
       <Route path="/crop-recommendation" element={<CropRecommendation />} />
       <Route path="/fertilizer" element={<FertilizerRecommendation />} />
+      <Route path="/weed-management" element={<WeedManagement />} />
+      <Route path="/crop-protection" element={<CropProtection />} />
       <Route path="/ai-assistant" element={<AIAssistant />} />
       <Route path="/analytics" element={<Analytics />} />
       <Route path="/settings" element={<Settings />} />
