@@ -3,24 +3,23 @@ import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import DashboardHeader from '../components/DashboardHeader'
 import UploadCard from '../components/UploadCard'
-import OCRPreviewCard from '../components/OCRPreviewCard'
 import MapPlaceholder from '../components/MapPlaceholder'
-import { FiCheckCircle, FiArrowRight, FiArrowLeft, FiLoader, FiFileText, FiImage, FiMapPin } from 'react-icons/fi'
+import { FiCheckCircle, FiLoader, FiFileText, FiImage, FiMapPin, FiInfo } from 'react-icons/fi'
 import { registerFarm } from '../services/api'
 import { extractTextFromImage, parseRORData, extractFormFromOCR } from '../services/ocr'
 import { geocodeLocation } from '../services/geocode'
 
 export default function RegisterFarm() {
-  const [step, setStep] = useState(1)
-  const [extractedData, setExtractedData] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [ocrLoading, setOcrLoading] = useState(false)
-  const [geoLoading, setGeoLoading] = useState(false)
-  const [error, setError] = useState('')
   const [rorFile, setRorFile] = useState(null)
   const [fmbFile, setFmbFile] = useState(null)
+  const [ocrLoading, setOcrLoading] = useState(false)
+  const [ocrStatus, setOcrStatus] = useState('')
+  const [geoLoading, setGeoLoading] = useState(false)
+  const [extractedData, setExtractedData] = useState(null)
   const [mapCoords, setMapCoords] = useState(null)
-  const [geoAddress, setGeoAddress] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [registered, setRegistered] = useState(false)
   const navigate = useNavigate()
 
   const [form, setForm] = useState({
@@ -31,17 +30,16 @@ export default function RegisterFarm() {
 
   const update = (field) => (e) => setForm((prev) => ({ ...prev, [field]: e.target.value }))
 
-  const autoLocateMap = async (village, district, state) => {
+  const autoLocate = async (village, district, state) => {
     if (!village && !district) return
     setGeoLoading(true)
     try {
       const result = await geocodeLocation(village, district, state)
       if (result) {
         setMapCoords([result.lat, result.lng])
-        setGeoAddress(result.displayName)
       }
     } catch {
-      // geocoding failed silently
+      // silent
     } finally {
       setGeoLoading(false)
     }
@@ -50,25 +48,44 @@ export default function RegisterFarm() {
   const handleRORUpload = async (file) => {
     setRorFile(file)
     setOcrLoading(true)
+    setOcrStatus('Reading document with OCR...')
     setExtractedData(null)
+
     try {
       const text = await extractTextFromImage(file)
+
+      if (!text || !text.trim()) {
+        setOcrStatus('No text found in document. Please ensure the image is clear and readable.')
+        setExtractedData({ 'File': file.name, 'Status': 'No text detected' })
+        setOcrLoading(false)
+        return
+      }
+
       const parsed = parseRORData(text)
       setExtractedData(parsed)
+
       const autoFill = extractFormFromOCR(parsed)
       setForm((prev) => ({ ...prev, ...autoFill }))
+
+      const filledFields = Object.keys(autoFill).length
+      if (filledFields > 0) {
+        setOcrStatus(`Extracted ${filledFields} fields from document!`)
+      } else {
+        setOcrStatus('Text found but could not identify specific fields.')
+      }
 
       const village = autoFill.village || ''
       const district = autoFill.district || ''
       const state = autoFill.state || ''
       if (village || district) {
-        autoLocateMap(village, district, state)
+        setGeoLoading(true)
+        setOcrStatus((prev) => prev + ' Locating farm on map...')
+        await autoLocate(village, district, state)
+        setOcrStatus('Document extracted and farm located on map!')
       }
     } catch {
-      setExtractedData({
-        'File Name': file.name,
-        'Status': 'OCR failed — please fill manually',
-      })
+      setOcrStatus('OCR processing failed. Please re-upload a clearer image.')
+      setExtractedData({ 'File': file.name, 'Status': 'OCR failed' })
     } finally {
       setOcrLoading(false)
     }
@@ -84,7 +101,7 @@ export default function RegisterFarm() {
     setLoading(true)
     try {
       await registerFarm(form)
-      navigate('/farm-profile')
+      setRegistered(true)
     } catch (err) {
       setError(err.message || 'Registration failed')
     } finally {
@@ -92,41 +109,56 @@ export default function RegisterFarm() {
     }
   }
 
+  if (registered) {
+    return (
+      <div className="flex min-h-screen bg-gray-50">
+        <Sidebar />
+        <div className="flex-1 flex flex-col min-w-0">
+          <DashboardHeader title="Smart Land Registration" />
+          <main className="flex-1 flex items-center justify-center p-6">
+            <div className="max-w-md text-center">
+              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FiCheckCircle className="text-4xl text-green-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Farm Registered!</h2>
+              <p className="text-gray-500 text-sm mb-6">Your farm has been successfully registered with AgriVISM.</p>
+              <button
+                onClick={() => navigate('/farm-profile')}
+                className="px-6 py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary-dark transition-colors"
+              >
+                View Farm Profile
+              </button>
+            </div>
+          </main>
+        </div>
+      </div>
+    )
+  }
+
+  const anyLoading = ocrLoading || geoLoading
+
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <DashboardHeader title="Smart Land Registration" />
         <main className="flex-1 p-6 overflow-y-auto">
-          {/* Step Indicator */}
-          <div className="flex items-center justify-center mb-8">
-            {[1, 2, 3].map((s) => (
-              <div key={s} className="flex items-center">
-                <div
-                  className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${
-                    step >= s ? 'bg-primary text-white' : 'bg-gray-200 text-gray-500'
-                  }`}
-                >
-                  {step > s ? <FiCheckCircle /> : s}
-                </div>
-                {s < 3 && (
-                  <div className={`w-16 sm:w-24 h-1 ${step > s ? 'bg-primary' : 'bg-gray-200'}`} />
-                )}
-              </div>
-            ))}
-          </div>
+          <div className="max-w-4xl mx-auto space-y-6">
+            {/* Header */}
+            <div className="text-center">
+              <h2 className="text-xl font-bold text-gray-900">Land Registration</h2>
+              <p className="text-gray-500 text-sm mt-1">Upload your ROR 1B and Village/FMB Sketch — everything will be extracted and auto-filled</p>
+            </div>
 
-          {/* Step 1: Upload Documents */}
-          {step === 1 && (
-            <div className="max-w-3xl mx-auto space-y-6">
-              <h2 className="text-xl font-bold text-gray-900 text-center">Upload Documents</h2>
-              <p className="text-gray-500 text-center text-sm">Upload your ROR 1B and Village/FMB Sketch — AI will extract details and locate your farm automatically</p>
+            {/* Upload Section */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              <h3 className="font-semibold text-gray-900 mb-4">Upload Documents</h3>
               <div className="grid sm:grid-cols-2 gap-6">
                 <div>
                   <UploadCard title="Upload ROR 1B" subtitle="PDF, JPG, PNG (Max 10MB)" onUpload={handleRORUpload} />
                   {rorFile && (
                     <div className="mt-2 flex items-center gap-2 p-2 bg-green-50 rounded-xl">
-                      <FiFileText className="text-green-600" />
+                      <FiFileText className="text-green-600 shrink-0" />
                       <span className="text-sm text-green-700 truncate">{rorFile.name}</span>
                     </div>
                   )}
@@ -135,139 +167,102 @@ export default function RegisterFarm() {
                   <UploadCard title="Upload Village/FMB Sketch" subtitle="PDF, JPG, PNG (Max 10MB)" onUpload={handleFMBUpload} />
                   {fmbFile && (
                     <div className="mt-2 flex items-center gap-2 p-2 bg-green-50 rounded-xl">
-                      <FiImage className="text-green-600" />
+                      <FiImage className="text-green-600 shrink-0" />
                       <span className="text-sm text-green-700 truncate">{fmbFile.name}</span>
                     </div>
                   )}
                 </div>
               </div>
 
+              {/* Status */}
               {ocrLoading && (
-                <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-xl">
-                  <FiLoader className="text-primary animate-spin text-xl" />
+                <div className="mt-4 flex items-center gap-3 p-4 bg-blue-50 rounded-xl">
+                  <FiLoader className="text-primary animate-spin text-xl shrink-0" />
                   <div>
-                    <p className="text-sm font-medium text-gray-900">Extracting text from ROR 1B...</p>
-                    <p className="text-xs text-gray-500">OCR is processing your document</p>
+                    <p className="text-sm font-medium text-gray-900">Processing document...</p>
+                    <p className="text-xs text-gray-500">{ocrStatus}</p>
                   </div>
                 </div>
               )}
 
-              {geoLoading && (
-                <div className="flex items-center gap-3 p-4 bg-green-50 rounded-xl">
-                  <FiMapPin className="text-green-600 animate-pulse text-xl" />
+              {!ocrLoading && geoLoading && (
+                <div className="mt-4 flex items-center gap-3 p-4 bg-green-50 rounded-xl">
+                  <FiMapPin className="text-green-600 animate-pulse text-xl shrink-0" />
                   <div>
-                    <p className="text-sm font-medium text-gray-900">Locating your farm on satellite map...</p>
-                    <p className="text-xs text-gray-500">Finding coordinates for {form.village || form.district || 'your location'}</p>
+                    <p className="text-sm font-medium text-gray-900">Locating farm on satellite map...</p>
+                    <p className="text-xs text-gray-500">Finding coordinates for {form.village || form.district}</p>
                   </div>
                 </div>
               )}
 
-              {!ocrLoading && !geoLoading && extractedData && mapCoords && (
-                <div className="flex items-center gap-3 p-4 bg-green-50 rounded-xl">
-                  <FiCheckCircle className="text-green-600 text-xl" />
+              {!anyLoading && ocrStatus && extractedData && (
+                <div className="mt-4 flex items-center gap-3 p-4 bg-green-50 rounded-xl">
+                  <FiCheckCircle className="text-green-600 text-xl shrink-0" />
                   <div>
-                    <p className="text-sm font-medium text-gray-900">Document extracted & farm located!</p>
-                    <p className="text-xs text-gray-500">Review details in the next step</p>
+                    <p className="text-sm font-medium text-gray-900">{ocrStatus}</p>
                   </div>
                 </div>
               )}
 
-              <div className="flex justify-end">
-                <button onClick={() => setStep(2)} className="px-6 py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary-dark transition-colors flex items-center gap-2">
-                  Next <FiArrowRight />
-                </button>
-              </div>
+              {!rorFile && !ocrLoading && (
+                <div className="mt-4 flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
+                  <FiInfo className="text-gray-400 text-xl shrink-0" />
+                  <p className="text-sm text-gray-500">Upload your ROR 1B document to auto-extract survey number, khata, village, district and locate your farm on the map.</p>
+                </div>
+              )}
             </div>
-          )}
 
-          {/* Step 2: Review + Map */}
-          {step === 2 && (
-            <div className="max-w-4xl mx-auto space-y-6">
-              <h2 className="text-xl font-bold text-gray-900 text-center">Review & Confirm</h2>
-              <p className="text-gray-500 text-center text-sm">
-                {extractedData ? 'Review extracted data and farm location' : 'Fill in details manually'}
-              </p>
-
-              {extractedData && <OCRPreviewCard data={extractedData} />}
-
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                <p className="text-sm text-gray-500 mb-4">
-                  {extractedData ? 'Edit extracted fields or fill in missing details:' : 'Fill in details manually:'}
-                </p>
+            {/* Extracted Details - Auto-filled */}
+            {extractedData && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <h3 className="font-semibold text-gray-900 mb-4">Extracted Details (auto-filled from ROR 1B)</h3>
                 <div className="grid sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Survey Number</label>
-                    <input value={form.survey_number} onChange={update('survey_number')} placeholder="e.g. 12/2A" className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Khata Number</label>
-                    <input value={form.khata} onChange={update('khata')} placeholder="e.g. 458" className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Village</label>
-                    <input value={form.village} onChange={(e) => { update('village')(e); autoLocateMap(e.target.value, form.district, form.state) }} placeholder="e.g. Kaveripattinam" className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">District</label>
-                    <input value={form.district} onChange={(e) => { update('district')(e); autoLocateMap(form.village, e.target.value, form.state) }} placeholder="e.g. Krishnagiri" className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
-                    <input value={form.state} onChange={(e) => { update('state')(e); autoLocateMap(form.village, form.district, e.target.value) }} placeholder="e.g. Tamil Nadu" className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Area</label>
-                    <input value={form.area} onChange={update('area')} placeholder="e.g. 2.5 Acres" className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
-                  </div>
+                  {Object.entries(extractedData).map(([key, value]) => (
+                    <div key={key} className="bg-gray-50 rounded-xl p-3">
+                      <p className="text-xs text-gray-500 uppercase tracking-wide">{key}</p>
+                      <p className="text-sm font-semibold text-gray-900 mt-1">{value}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
+            )}
 
-              {/* Auto-located Map */}
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+            {/* Map */}
+            {(mapCoords || rorFile) && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                 <div className="flex items-center gap-2 mb-3">
                   <FiMapPin className="text-primary" />
                   <h3 className="font-semibold text-gray-900">Farm Location</h3>
                   {geoLoading && <FiLoader className="animate-spin text-primary" />}
                   {mapCoords && !geoLoading && <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Auto-located</span>}
                 </div>
-                <p className="text-sm text-gray-500 mb-3">
-                  {mapCoords
-                    ? 'Farm automatically located from your document details. Click map to adjust if needed.'
-                    : 'Upload ROR 1B to auto-locate your farm, or enter village/district above.'}
-                </p>
-                <MapPlaceholder height="h-80" onLocationSelect={(pos) => setMapCoords([pos.lat, pos.lng])} autoLocate={mapCoords} />
+                {mapCoords ? (
+                  <MapPlaceholder height="h-80" autoLocate={mapCoords} onLocationSelect={(pos) => setMapCoords([pos.lat, pos.lng])} />
+                ) : (
+                  <div className="h-80 rounded-2xl bg-gray-100 flex items-center justify-center">
+                    <p className="text-gray-400 text-sm">Upload ROR 1B to auto-locate farm</p>
+                  </div>
+                )}
               </div>
+            )}
 
-              <div className="flex justify-between">
-                <button onClick={() => setStep(1)} className="px-6 py-3 border border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors flex items-center gap-2">
-                  <FiArrowLeft /> Back
-                </button>
-                <button onClick={() => setStep(3)} className="px-6 py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary-dark transition-colors flex items-center gap-2">
-                  Next <FiArrowRight />
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Step 3: Farm Details + Register */}
-          {step === 3 && (
-            <div className="max-w-3xl mx-auto space-y-6">
-              <h2 className="text-xl font-bold text-gray-900 text-center">Farm Details</h2>
-              <p className="text-gray-500 text-center text-sm">Complete your farm registration</p>
-
-              {error && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{error}</div>
-              )}
-
+            {/* Registration Form */}
+            {rorFile && (
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <h3 className="font-semibold text-gray-900 mb-4">Farm Details</h3>
+
+                {error && (
+                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{error}</div>
+                )}
+
                 <form className="space-y-4" onSubmit={handleSubmit}>
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Farm Name</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Farm Name *</label>
                       <input value={form.name} onChange={update('name')} placeholder="e.g. Green Valley Farm" required className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Crop</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Crop *</label>
                       <select value={form.crop} onChange={update('crop')} required className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary bg-white">
                         <option value="">Select crop</option>
                         <option>Rice</option>
@@ -277,11 +272,10 @@ export default function RegisterFarm() {
                         <option>Coconut</option>
                         <option>Turmeric</option>
                         <option>Maize</option>
-                        <option>Other</option>
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Area (Acres)</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Area (Acres) *</label>
                       <input value={form.area} onChange={update('area')} placeholder="e.g. 2.5" required className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
                     </div>
                     <div>
@@ -317,18 +311,15 @@ export default function RegisterFarm() {
                     </div>
                   )}
 
-                  <div className="flex justify-between pt-4">
-                    <button type="button" onClick={() => setStep(2)} className="px-6 py-3 border border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors flex items-center gap-2">
-                      <FiArrowLeft /> Back
-                    </button>
-                    <button type="submit" disabled={loading} className="px-8 py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary-dark transition-colors shadow-lg shadow-primary/25 disabled:opacity-50 flex items-center gap-2">
+                  <div className="flex justify-end pt-2">
+                    <button type="submit" disabled={loading || anyLoading} className="px-8 py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary-dark transition-colors shadow-lg shadow-primary/25 disabled:opacity-50 flex items-center gap-2">
                       {loading ? <><FiLoader className="animate-spin" /> Registering...</> : 'Register Farm'}
                     </button>
                   </div>
                 </form>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </main>
       </div>
     </div>

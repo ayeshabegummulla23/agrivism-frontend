@@ -1,31 +1,24 @@
+import { createWorker } from 'tesseract.js'
+
 let workerInstance = null
-let workerReady = null
 
 async function getWorker() {
   if (workerInstance) return workerInstance
-  if (workerReady) return workerReady
-
-  workerReady = (async () => {
-    try {
-      const { createWorker } = await import('tesseract.js')
-      const worker = await createWorker('eng', 1, {
-        logger: () => {},
-      })
-      workerInstance = worker
-      return worker
-    } catch {
-      return null
-    }
-  })()
-
-  return workerReady
+  try {
+    workerInstance = await createWorker('eng', 1, {
+      logger: () => {},
+    })
+    return workerInstance
+  } catch {
+    return null
+  }
 }
 
 export async function extractTextFromImage(file) {
-  try {
-    const worker = await getWorker()
-    if (!worker) return ''
+  const worker = await getWorker()
+  if (!worker) return ''
 
+  try {
     const url = URL.createObjectURL(file)
     const { data } = await worker.recognize(url)
     URL.revokeObjectURL(url)
@@ -37,30 +30,68 @@ export async function extractTextFromImage(file) {
 
 export function parseRORData(text) {
   if (!text || !text.trim()) {
-    return {
-      'Status': 'No text detected — please fill manually',
-    }
+    return { 'Status': 'No text detected' }
   }
 
-  const lines = text.split('\n').map((l) => l.trim()).filter(Boolean)
-  const full = lines.join(' ')
+  const full = text.replace(/\n/g, ' ').replace(/\s+/g, ' ')
 
   const find = (patterns) => {
     for (const p of patterns) {
       const m = full.match(p)
-      if (m) return m[1]?.trim() || ''
+      if (m && m[1]) return m[1].trim()
     }
     return ''
   }
 
+  const surveyNumber = find([
+    /(?:Survey\s*(?:No|Number|\.)\s*[:.]?\s*)([\d\/\.]+)/i,
+    /(?:Sy\.?\s*No\.?\s*[:.]?\s*)([\d\/\.]+)/i,
+    /(?:S\.?\s*No\.?\s*[:.]?\s*)([\d\/\.]+)/i,
+    /(?:Survey\s*)([\d\/]+[\d\/]*)/i,
+  ])
+
+  const khata = find([
+    /(?:Khata\s*(?:No|Number|\.|#)\s*[:.]?\s*)([\d\/\.]+)/i,
+    /(?:Gat\s*(?:No|Number)\s*[:.]?\s*)([\d\/\.]+)/i,
+    /(?:Patta\s*(?:No|Number)\s*[:.]?\s*)([\d\/\.]+)/i,
+  ])
+
+  const village = find([
+    /(?:Village\s*[:.]?\s*)([A-Za-z\s]+)/i,
+    /(?:Gram\s*[:.]?\s*)([A-Za-z\s]+)/i,
+    /(?:Mauza\s*[:.]?\s*)([A-Za-z\s]+)/i,
+  ])
+
+  const district = find([
+    /(?:District\s*[:.]?\s*)([A-Za-z\s]+)/i,
+    /(?:Dist\.?\s*[:.]?\s*)([A-Za-z\s]+)/i,
+    /(?:Zilla\s*[:.]?\s*)([A-Za-z\s]+)/i,
+  ])
+
+  const state = find([
+    /(?:State\s*[:.]?\s*)([A-Za-z\s]+)/i,
+    /(?:Pradesh\s*[:.]?\s*)([A-Za-z\s]+)/i,
+  ])
+
+  const area = find([
+    /(?:Area\s*[:.]?\s*)([\d\.]+\s*(?:Acres?|Hectares?|Ha|ac|ha))/i,
+    /([\d\.]+\s*(?:Acres?|Hectares?|Ha|ac|ha))/i,
+  ])
+
+  const ownerName = find([
+    /(?:Owner\s*(?:Name)?\s*[:.]?\s*)([A-Za-z\s.]+)/i,
+    /(?:Holder\s*(?:Name)?\s*[:.]?\s*)([A-Za-z\s.]+)/i,
+    /(?:Name\s*[:.]?\s*)([A-Za-z\s.]+)/i,
+  ])
+
   return {
-    'Owner Name': find([/(?:Owner\s*(?:Name)?\s*[:.]?\s*)([A-Za-z\s.]+)/i, /(?:Holder\s*(?:Name)?\s*[:.]?\s*)([A-Za-z\s.]+)/i, /(?:Name\s*[:.]?\s*)([A-Za-z\s.]+)/i]) || 'Not detected',
-    'Survey Number': find([/(?:Survey\s*(?:No|Number|\.)\s*[:.]?\s*)([\d\/\.]+)/i, /(?:Sy\.?\s*No\.?\s*[:.]?\s*)([\d\/\.]+)/i, /(\/\d+[\d\/]*)/]) || 'Not detected',
-    'Khata Number': find([/(?:Khata\s*(?:No|Number|\.|#)\s*[:.]?\s*)([\d\/\.]+)/i, /(?:Gat\s*(?:No|Number)\s*[:.]?\s*)([\d\/\.]+)/i]) || 'Not detected',
-    'Village': find([/(?:Village\s*[:.]?\s*)([A-Za-z\s]+)/i, /(?:Gram\s*[:.]?\s*)([A-Za-z\s]+)/i]) || 'Not detected',
-    'District': find([/(?:District\s*[:.]?\s*)([A-Za-z\s]+)/i, /(?:Dist\.?\s*[:.]?\s*)([A-Za-z\s]+)/i]) || 'Not detected',
-    'State': find([/(?:State\s*[:.]?\s*)([A-Za-z\s]+)/i, /(?:Pradesh\s*[:.]?\s*)([A-Za-z\s]+)/i]) || 'Not detected',
-    'Area': find([/(?:Area\s*[:.]?\s*)([\d\.]+\s*(?:Acres?|Hectares?|Ha|ac|ha))/i, /([\d\.]+\s*(?:Acres?|Hectares?|Ha|ac|ha))/i]) || 'Not detected',
+    'Owner Name': ownerName || 'Not detected',
+    'Survey Number': surveyNumber || 'Not detected',
+    'Khata Number': khata || 'Not detected',
+    'Village': village || 'Not detected',
+    'District': district || 'Not detected',
+    'State': state || 'Not detected',
+    'Area': area || 'Not detected',
   }
 }
 
@@ -75,8 +106,9 @@ export function extractFormFromOCR(parsed) {
     'Area': 'area',
   }
   for (const [key, field] of Object.entries(map)) {
-    if (parsed[key] && parsed[key] !== 'Not detected' && parsed[key] !== 'No text detected — please fill manually') {
-      form[field] = parsed[key]
+    const val = parsed[key]
+    if (val && val !== 'Not detected' && val !== 'No text detected') {
+      form[field] = val
     }
   }
   return form
