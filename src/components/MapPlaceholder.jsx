@@ -1,43 +1,72 @@
-import { useState, useEffect } from 'react'
-import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet'
-import L from 'leaflet'
+import { useState, useEffect, useRef } from 'react'
 import { FiMapPin, FiCrosshair } from 'react-icons/fi'
 
 const defaultPos = [12.2588, 78.5508]
 
-const markerIcon = new L.Icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-})
-
-function LocationMarker({ position, setPosition }) {
-  useMapEvents({
-    click(e) {
-      setPosition([e.latlng.lat, e.latlng.lng])
-    },
-  })
-  return position ? <Marker position={position} icon={markerIcon} /> : null
-}
-
-function RecenterMap({ position }) {
-  const map = useMap()
-  useEffect(() => {
-    if (position) map.setView(position, 15)
-  }, [position, map])
-  return null
-}
-
-export default function MapPlaceholder({ height = 'h-64', onLocationSelect, initialPosition }) {
-  const [position, setPosition] = useState(initialPosition || defaultPos)
+function LeafletMap({ position, setPosition, height }) {
+  const mapRef = useRef(null)
+  const mapInstance = useRef(null)
+  const markerRef = useRef(null)
 
   useEffect(() => {
-    if (onLocationSelect) {
-      onLocationSelect({ lat: position[0], lng: position[1] })
+    let cancelled = false
+
+    async function initMap() {
+      try {
+        const L = await import('leaflet')
+
+        const container = document.getElementById('farm-map')
+        if (!container || mapInstance.current) return
+
+        const map = L.map(container, {
+          center: position,
+          zoom: 13,
+          zoomControl: true,
+        })
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap contributors',
+        }).addTo(map)
+
+        const icon = L.divIcon({
+          className: 'custom-marker',
+          html: `<div style="width:24px;height:24px;background:#16a34a;border:3px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>`,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12],
+        })
+
+        markerRef.current = L.marker(position, { icon }).addTo(map)
+
+        map.on('click', (e) => {
+          if (cancelled) return
+          const newPos = [e.latlng.lat, e.latlng.lng]
+          setPosition(newPos)
+          markerRef.current.setLatLng(newPos)
+        })
+
+        mapInstance.current = map
+      } catch {
+        // Leaflet failed to load
+      }
+    }
+
+    initMap()
+
+    return () => {
+      cancelled = true
+      if (mapInstance.current) {
+        mapInstance.current.remove()
+        mapInstance.current = null
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (mapInstance.current && position) {
+      mapInstance.current.setView(position, 15)
+      if (markerRef.current) {
+        markerRef.current.setLatLng(position)
+      }
     }
   }, [position])
 
@@ -51,20 +80,8 @@ export default function MapPlaceholder({ height = 'h-64', onLocationSelect, init
   }
 
   return (
-    <div className={`${height} rounded-2xl overflow-hidden border border-gray-200 relative`}>
-      <MapContainer
-        center={position}
-        zoom={13}
-        className="w-full h-full"
-        style={{ background: '#e8f5e9' }}
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org">OSM</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        <LocationMarker position={position} setPosition={setPosition} />
-        <RecenterMap position={position} />
-      </MapContainer>
+    <div className={`${height} rounded-2xl overflow-hidden border border-gray-200 relative`} style={{ minHeight: '300px' }}>
+      <div id="farm-map" className="w-full h-full" style={{ background: '#e8f5e9' }} />
       <button
         type="button"
         onClick={handleMyLocation}
@@ -81,4 +98,16 @@ export default function MapPlaceholder({ height = 'h-64', onLocationSelect, init
       </div>
     </div>
   )
+}
+
+export default function MapPlaceholder({ height = 'h-64', onLocationSelect, initialPosition }) {
+  const [position, setPosition] = useState(initialPosition || defaultPos)
+
+  useEffect(() => {
+    if (onLocationSelect) {
+      onLocationSelect({ lat: position[0], lng: position[1] })
+    }
+  }, [position])
+
+  return <LeafletMap position={position} setPosition={setPosition} height={height} />
 }

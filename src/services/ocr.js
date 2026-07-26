@@ -1,15 +1,33 @@
-import { createWorker } from 'tesseract.js'
+let workerInstance = null
+
+async function getWorker() {
+  if (workerInstance) return workerInstance
+  const { createWorker } = await import('tesseract.js')
+  workerInstance = await createWorker()
+  await workerInstance.loadLanguage('eng')
+  await workerInstance.initialize('eng')
+  return workerInstance
+}
 
 export async function extractTextFromImage(file) {
-  const worker = await createWorker('eng')
-  const url = URL.createObjectURL(file)
-  const { data } = await worker.recognize(url)
-  URL.revokeObjectURL(url)
-  await worker.terminate()
-  return data.text
+  try {
+    const worker = await getWorker()
+    const url = URL.createObjectURL(file)
+    const { data } = await worker.recognize(url)
+    URL.revokeObjectURL(url)
+    return data.text || ''
+  } catch {
+    return ''
+  }
 }
 
 export function parseRORData(text) {
+  if (!text || !text.trim()) {
+    return {
+      'Status': 'No text found — please fill manually',
+    }
+  }
+
   const lines = text.split('\n').map((l) => l.trim()).filter(Boolean)
   const full = lines.join(' ')
 
