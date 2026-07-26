@@ -1,17 +1,22 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import DashboardHeader from '../components/DashboardHeader'
 import MapPlaceholder from '../components/MapPlaceholder'
 import { GiPlantRoots } from 'react-icons/gi'
-import { FiLoader } from 'react-icons/fi'
+import { FiLoader, FiAlertTriangle, FiArrowRight } from 'react-icons/fi'
 import { getFarmProfile } from '../services/api'
 
 export default function FarmProfile() {
   const [farm, setFarm] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const navigate = useNavigate()
 
   useEffect(() => {
-    getFarmProfile().then((d) => { setFarm(d); setLoading(false) }).catch(() => setLoading(false))
+    getFarmProfile()
+      .then((d) => { setFarm(d); setLoading(false) })
+      .catch((err) => { setError(err.message || 'Failed to load farm profile'); setLoading(false) })
   }, [])
 
   if (loading) {
@@ -21,14 +26,43 @@ export default function FarmProfile() {
         <div className="flex-1 flex flex-col min-w-0">
           <DashboardHeader title="Farm Profile" />
           <main className="flex-1 flex items-center justify-center">
-            <FiLoader className="text-4xl text-primary animate-spin" />
+            <div className="text-center">
+              <FiLoader className="text-4xl text-primary animate-spin mx-auto mb-4" />
+              <p className="text-gray-500">Loading farm profile...</p>
+            </div>
           </main>
         </div>
       </div>
     )
   }
 
-  if (!farm) return null
+  if (error || !farm || farm.registered === false) {
+    return (
+      <div className="flex min-h-screen bg-gray-50">
+        <Sidebar />
+        <div className="flex-1 flex flex-col min-w-0">
+          <DashboardHeader title="Farm Profile" />
+          <main className="flex-1 flex items-center justify-center p-6">
+            <div className="max-w-md text-center">
+              <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FiAlertTriangle className="text-3xl text-orange-500" />
+              </div>
+              <h2 className="text-xl font-bold text-gray-900 mb-2">No Farm Registered</h2>
+              <p className="text-gray-500 text-sm mb-6">
+                {error || 'You haven\'t registered your farm yet. Register your farm to get personalized recommendations.'}
+              </p>
+              <button
+                onClick={() => navigate('/register-farm')}
+                className="px-6 py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary-dark transition-colors flex items-center gap-2 mx-auto"
+              >
+                Register Farm <FiArrowRight />
+              </button>
+            </div>
+          </main>
+        </div>
+      </div>
+    )
+  }
 
   const w = farm.weather_summary || {}
 
