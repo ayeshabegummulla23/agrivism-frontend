@@ -62,16 +62,25 @@ export default function RegisterFarm() {
         return
       }
 
-      const displayData = {
-        'Owner Name': fields.owner_name || 'Not detected',
-        'Survey Number': fields.survey_number || 'Not detected',
-        'Khata Number': fields.khata || 'Not detected',
-        'Village': fields.village || 'Not detected',
-        'District': fields.district || 'Not detected',
-        'State': fields.state || 'Not detected',
-        'Area': fields.area || 'Not detected',
-        'Soil Type': fields.soil_type || 'Not detected',
-        'Water Source': fields.water_source || 'Not detected',
+      const displayData = {}
+      const orderedKeys = [
+        ['Owner Name', fields.owner_name],
+        ['Application No', fields.application_no],
+        ['Date', fields.date],
+        ['Survey Number', fields.survey_number],
+        ['Khata Number', fields.khata],
+        ['Village', fields.village],
+        ['District', fields.district],
+        ['State', fields.state],
+        ['Area', fields.area],
+        ['Soil Type', fields.soil_type],
+        ['Water Source', fields.water_source],
+      ]
+      for (const [label, val] of orderedKeys) {
+        if (val) displayData[label] = val
+      }
+      if (Object.keys(displayData).length === 0) {
+        displayData['Status'] = 'Fields not detected'
       }
       setExtractedData(displayData)
 
