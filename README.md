@@ -300,4 +300,4 @@ All mock data is clearly marked with comments for easy replacement with real API
 
 ## License
 
-Built by **VimSha AI**. All rights reserved.
+Built by **AgriVISM**. All rights reserved.

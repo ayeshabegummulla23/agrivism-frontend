@@ -1,10 +1,34 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { GiPlantRoots } from 'react-icons/gi'
 import { FiEye, FiEyeOff } from 'react-icons/fi'
+import { register } from '../services/api'
 
 export default function Register() {
   const [showPassword, setShowPassword] = useState(false)
+  const [form, setForm] = useState({
+    first_name: '', last_name: '', mobile: '', email: '', village: '', password: '',
+  })
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+  const navigate = useNavigate()
+
+  const update = (field) => (e) => setForm((prev) => ({ ...prev, [field]: e.target.value }))
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+
+    try {
+      await register(form)
+      navigate('/dashboard')
+    } catch (err) {
+      setError(err.message || 'Registration failed. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 via-white to-emerald-50 px-4 py-12">
@@ -19,13 +43,22 @@ export default function Register() {
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-          <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+              {error}
+            </div>
+          )}
+
+          <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
                 <input
                   type="text"
                   placeholder="First name"
+                  value={form.first_name}
+                  onChange={update('first_name')}
+                  required
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
                 />
               </div>
@@ -34,6 +67,9 @@ export default function Register() {
                 <input
                   type="text"
                   placeholder="Last name"
+                  value={form.last_name}
+                  onChange={update('last_name')}
+                  required
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
                 />
               </div>
@@ -44,6 +80,9 @@ export default function Register() {
               <input
                 type="tel"
                 placeholder="+91 Enter mobile number"
+                value={form.mobile}
+                onChange={update('mobile')}
+                required
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
               />
             </div>
@@ -53,6 +92,9 @@ export default function Register() {
               <input
                 type="email"
                 placeholder="Enter email address"
+                value={form.email}
+                onChange={update('email')}
+                required
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
               />
             </div>
@@ -62,6 +104,9 @@ export default function Register() {
               <input
                 type="text"
                 placeholder="Enter your village or city"
+                value={form.village}
+                onChange={update('village')}
+                required
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
               />
             </div>
@@ -72,6 +117,10 @@ export default function Register() {
                 <input
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Create a password"
+                  value={form.password}
+                  onChange={update('password')}
+                  required
+                  minLength={6}
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all pr-12"
                 />
                 <button
@@ -85,7 +134,7 @@ export default function Register() {
             </div>
 
             <label className="flex items-start gap-2 cursor-pointer">
-              <input type="checkbox" className="w-4 h-4 mt-0.5 text-primary border-gray-300 rounded focus:ring-primary" />
+              <input type="checkbox" required className="w-4 h-4 mt-0.5 text-primary border-gray-300 rounded focus:ring-primary" />
               <span className="text-sm text-gray-500">
                 I agree to the <a href="#" className="text-primary hover:underline">Terms of Service</a> and{' '}
                 <a href="#" className="text-primary hover:underline">Privacy Policy</a>
@@ -94,9 +143,10 @@ export default function Register() {
 
             <button
               type="submit"
-              className="w-full py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary-dark transition-colors shadow-lg shadow-primary/25"
+              disabled={loading}
+              className="w-full py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary-dark transition-colors shadow-lg shadow-primary/25 disabled:opacity-50"
             >
-              Create Account
+              {loading ? 'Creating Account...' : 'Create Account'}
             </button>
           </form>
 

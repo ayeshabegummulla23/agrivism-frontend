@@ -1,9 +1,13 @@
 {
   "nav": {
     "dashboard": "டாஷ்போர்டு",
+    "groupFarm": "பண்ணை மேலாண்மை",
+    "groupWeatherWater": "வானிலை & நீர்",
+    "groupCrop": "பயிர் மேலாண்மை",
+    "groupMarket": "சந்தை & பகுப்பாய்வு",
     "landRegistration": "நில பதிவு",
     "farmProfile": "பண்ணை சுயவிவரம்",
-    "weather": "வானிலை",
+    "weather": "வானிலை முன்னறிவிப்பு",
     "waterManagement": "நீர் மேலாண்மை",
     "marketPrices": "சந்தை விலைகள்",
     "problemSolver": "சிக்கல் தீர்வு",
@@ -12,7 +16,7 @@
     "fertilizerGuide": "உர வழிகாட்டி",
     "weedManagement": "களை மேலாண்மை",
     "cropProtection": "பயிர் பாதுகாப்பு",
-    "valiVideoCall": "வளி வீடியோ அழைப்பு",
+    "valiVideoCall": "AI உதவியாளர்",
     "analytics": "பகுப்பாய்வு",
     "settings": "அமைப்புகள்",
     "logout": "வெளியேறு"

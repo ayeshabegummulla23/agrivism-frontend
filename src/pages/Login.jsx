@@ -1,11 +1,32 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { GiPlantRoots } from 'react-icons/gi'
 import { FiEye, FiEyeOff } from 'react-icons/fi'
+import { login } from '../services/api'
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false)
   const [remember, setRemember] = useState(false)
+  const [identifier, setIdentifier] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+  const navigate = useNavigate()
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+
+    try {
+      await login(identifier, password)
+      navigate('/dashboard')
+    } catch (err) {
+      setError(err.message || 'Login failed. Please check your credentials.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 via-white to-emerald-50 px-4">
@@ -20,12 +41,21 @@ export default function Login() {
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-          <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+              {error}
+            </div>
+          )}
+
+          <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Mobile Number or Email</label>
               <input
                 type="text"
                 placeholder="Enter mobile number or email"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                required
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
               />
             </div>
@@ -36,6 +66,9 @@ export default function Login() {
                 <input
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Enter password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all pr-12"
                 />
                 <button
@@ -63,9 +96,10 @@ export default function Login() {
 
             <button
               type="submit"
-              className="w-full py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary-dark transition-colors shadow-lg shadow-primary/25"
+              disabled={loading}
+              className="w-full py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary-dark transition-colors shadow-lg shadow-primary/25 disabled:opacity-50"
             >
-              Login
+              {loading ? 'Logging in...' : 'Login'}
             </button>
           </form>
 

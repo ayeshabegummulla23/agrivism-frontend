@@ -1,0 +1,11 @@
+node_modules
+dist
+.git
+.github
+.gitignore
+*.md
+.vscode
+.idea
+server.cjs
+render.yaml
+public/404.html

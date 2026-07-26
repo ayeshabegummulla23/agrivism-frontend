@@ -1,0 +1,29 @@
+{
+  "name": "AgriVISM - Smart Farming Platform",
+  "short_name": "AgriVISM",
+  "description": "AI-powered agriculture platform for Indian farmers",
+  "start_url": "/agrivism-frontend/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#16a34a",
+  "orientation": "portrait-primary",
+  "scope": "/agrivism-frontend/",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/agrivism-frontend/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/agrivism-frontend/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["agriculture", "food", "utilities"],
+  "screenshots": [],
+  "prefer_related_applications": false
+}

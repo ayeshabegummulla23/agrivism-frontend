@@ -1,7 +1,11 @@
 import { FiBell, FiSearch } from 'react-icons/fi'
 import { Link } from 'react-router-dom'
+import { getCurrentUser } from '../services/api'
 
 export default function DashboardHeader({ title }) {
+  const user = getCurrentUser()
+  const initials = user ? `${user.first_name?.[0] || ''}${user.last_name?.[0] || ''}`.toUpperCase() : 'AG'
+
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
       <div>
@@ -21,7 +25,7 @@ export default function DashboardHeader({ title }) {
           <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
         </Link>
         <div className="w-9 h-9 bg-primary/10 rounded-full flex items-center justify-center text-primary font-bold text-sm">
-          RK
+          {initials}
         </div>
       </div>
     </header>

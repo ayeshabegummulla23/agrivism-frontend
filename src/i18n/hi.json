@@ -1,9 +1,13 @@
 {
   "nav": {
     "dashboard": "डैशबोर्ड",
+    "groupFarm": "खेत प्रबंधन",
+    "groupWeatherWater": "मौसम और जल",
+    "groupCrop": "फसल प्रबंधन",
+    "groupMarket": "बाज़ार और विश्लेषण",
     "landRegistration": "भूमि पंजीकरण",
     "farmProfile": "खेत प्रोफ़ाइल",
-    "weather": "मौसम",
+    "weather": "मौसम पूर्वानुमान",
     "waterManagement": "जल प्रबंधन",
     "marketPrices": "बाज़ार मूल्य",
     "problemSolver": "समस्या समाधान",
@@ -12,7 +16,7 @@
     "fertilizerGuide": "उर्वरक गाइड",
     "weedManagement": "खरपतवार प्रबंधन",
     "cropProtection": "फसल सुरक्षा",
-    "valiVideoCall": "वाली वीडियो कॉल",
+    "valiVideoCall": "AI सहायक",
     "analytics": "विश्लेषण",
     "settings": "सेटिंग्स",
     "logout": "लॉगआउट"

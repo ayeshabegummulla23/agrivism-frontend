@@ -1,9 +1,13 @@
 {
   "nav": {
     "dashboard": "Dashboard",
+    "groupFarm": "Farm Management",
+    "groupWeatherWater": "Weather & Water",
+    "groupCrop": "Crop Management",
+    "groupMarket": "Market & Analytics",
     "landRegistration": "Land Registration",
     "farmProfile": "Farm Profile",
-    "weather": "Weather",
+    "weather": "Weather Forecast",
     "waterManagement": "Water Management",
     "marketPrices": "Market Prices",
     "problemSolver": "Problem Solver",
@@ -12,7 +16,7 @@
     "fertilizerGuide": "Fertilizer Guide",
     "weedManagement": "Weed Management",
     "cropProtection": "Crop Protection",
-    "valiVideoCall": "VALI Video Call",
+    "valiVideoCall": "AI Assistant",
     "analytics": "Analytics",
     "settings": "Settings",
     "logout": "Logout"

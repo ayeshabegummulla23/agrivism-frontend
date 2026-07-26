@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
 import DashboardHeader from '../components/DashboardHeader'
 import UploadCard from '../components/UploadCard'
-import { FiAlertTriangle, FiCheckCircle, FiClock, FiFileText, FiCloud, FiWind, FiDroplet, FiSun, FiInfo } from 'react-icons/fi'
+import { FiAlertTriangle, FiCheckCircle, FiClock, FiFileText, FiCloud, FiWind, FiDroplet, FiSun, FiLoader } from 'react-icons/fi'
+import { detectDisease, getDashboardWeather } from '../services/api'
 
 const symptoms = [
   { id: 'yellow', label: 'Leaves Turning Yellow', icon: '🍂' },
@@ -11,55 +12,41 @@ const symptoms = [
   { id: 'yield', label: 'Low Yield', icon: '📉' },
 ]
 
-const mockDiagnosis = {
-  problem: 'Leaf Blight',
-  severity: 'Moderate',
-  confidence: 87,
-  causes: ['Fungal infection (Alternaria)', 'Excess moisture', 'Poor drainage'],
-  treatment: [
-    'Apply Mancozeb 75% WP @ 2g/liter',
-    'Remove affected leaves immediately',
-    'Improve field drainage',
-  ],
-  prevention: [
-    'Use resistant varieties',
-    'Maintain proper plant spacing',
-    'Avoid overhead irrigation',
-  ],
-}
-
-const todayWeather = {
-  condition: 'Rainy',
-  temp: 26,
-  humidity: 80,
-  rainChance: 75,
-  windSpeed: 8,
-}
-
-const weatherAlerts = [
-  {
-    type: 'danger',
-    title: 'Do NOT Spray Pesticide/Fungicide Today',
-    message: `Rain expected with ${todayWeather.rainChance}% chance. Any chemical sprayed today will wash off within hours, wasting your money and harming the soil. Wait for dry weather.`,
-    action: 'Skip spraying today. Plan for Wednesday or Thursday when weather is expected to be dry.',
-  },
-  {
-    type: 'warning',
-    title: 'Excess Moisture is Making It Worse',
-    message: `Your diagnosis shows "Excess moisture" as a cause. Today's humidity is ${todayWeather.humidity}% with rain expected. This moisture will accelerate Leaf Blight spread.`,
-    action: 'Improve drainage NOW — clear blocked water channels and create furrow drains before rain hits.',
-  },
-  {
-    type: 'info',
-    title: 'Best Treatment Window',
-    message: 'Weather forecast shows dry conditions from Wednesday. That is the ideal day to apply Mancozeb 75% WP.',
-    action: 'Apply Mancozeb 75% WP @ 2g/liter on Wednesday morning (5-7 AM). Mix with water and spray evenly on affected and surrounding plants.',
-  },
-]
-
 export default function ProblemSolver() {
   const [selectedSymptom, setSelectedSymptom] = useState(null)
-  const [showDiagnosis, setShowDiagnosis] = useState(false)
+  const [diagnosis, setDiagnosis] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [weather, setWeather] = useState(null)
+
+  useEffect(() => {
+    getDashboardWeather().then(setWeather).catch(() => {})
+  }, [])
+
+  const handleDiagnose = async () => {
+    setLoading(true)
+    try {
+      const data = await detectDisease('uploaded-image.jpg', selectedSymptom || 'unknown')
+      setDiagnosis({
+        problem: data.disease,
+        severity: data.severity.charAt(0).toUpperCase() + data.severity.slice(1),
+        confidence: Math.round(data.confidence * 100),
+        causes: ['Based on AI analysis of uploaded image'],
+        treatment: [data.treatment],
+        prevention: data.prevention,
+      })
+    } catch {
+      setDiagnosis({
+        problem: 'Unable to diagnose',
+        severity: 'Unknown',
+        confidence: 0,
+        causes: [],
+        treatment: ['Please try uploading the image again.'],
+        prevention: [],
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -95,43 +82,33 @@ export default function ProblemSolver() {
               <UploadCard title="Upload Crop Photo" subtitle="Take a clear photo of the affected area" />
             </div>
 
-            {/* Describe Problem */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <h3 className="font-semibold text-gray-900 mb-4">Describe the Problem</h3>
-              <textarea
-                rows={4}
-                placeholder="Describe what you observe on your crop..."
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary resize-none"
-              />
-            </div>
-
             <button
-              onClick={() => setShowDiagnosis(true)}
-              className="w-full py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary-dark transition-colors"
+              onClick={handleDiagnose}
+              disabled={loading}
+              className="w-full py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              Get AI Diagnosis
+              {loading ? <><FiLoader className="animate-spin" /> Analyzing...</> : 'Get AI Diagnosis'}
             </button>
 
             {/* AI Diagnosis */}
-            {showDiagnosis && (
+            {diagnosis && (
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
                     <FiAlertTriangle className="text-orange-600 text-xl" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-gray-900 text-lg">{mockDiagnosis.problem}</h3>
-                    <p className="text-sm text-gray-500">Severity: {mockDiagnosis.severity} • {mockDiagnosis.confidence}% confidence</p>
+                    <h3 className="font-bold text-gray-900 text-lg">{diagnosis.problem}</h3>
+                    <p className="text-sm text-gray-500">Severity: {diagnosis.severity} • {diagnosis.confidence}% confidence</p>
                   </div>
                 </div>
 
-                {/* Causes */}
                 <div>
                   <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
                     <FiFileText className="text-primary" /> Possible Causes
                   </h4>
                   <ul className="space-y-2">
-                    {mockDiagnosis.causes.map((c, i) => (
+                    {diagnosis.causes.map((c, i) => (
                       <li key={i} className="flex items-center gap-2 text-sm text-gray-700">
                         <FiAlertTriangle className="text-orange-400 shrink-0" /> {c}
                       </li>
@@ -139,13 +116,12 @@ export default function ProblemSolver() {
                   </ul>
                 </div>
 
-                {/* Treatment */}
                 <div>
                   <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
                     <FiCheckCircle className="text-primary" /> Treatment
                   </h4>
                   <ul className="space-y-2">
-                    {mockDiagnosis.treatment.map((t, i) => (
+                    {diagnosis.treatment.map((t, i) => (
                       <li key={i} className="flex items-center gap-2 text-sm text-gray-700">
                         <FiCheckCircle className="text-green-500 shrink-0" /> {t}
                       </li>
@@ -153,13 +129,12 @@ export default function ProblemSolver() {
                   </ul>
                 </div>
 
-                {/* Prevention */}
                 <div>
                   <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
                     <FiClock className="text-primary" /> Prevention
                   </h4>
                   <ul className="space-y-2">
-                    {mockDiagnosis.prevention.map((p, i) => (
+                    {diagnosis.prevention.map((p, i) => (
                       <li key={i} className="flex items-center gap-2 text-sm text-gray-700">
                         <FiClock className="text-blue-500 shrink-0" /> {p}
                       </li>
@@ -170,81 +145,51 @@ export default function ProblemSolver() {
             )}
 
             {/* Weather-Based Treatment Alerts */}
-            {showDiagnosis && (
+            {diagnosis && weather && (
               <div className="space-y-4">
                 <h3 className="font-semibold text-gray-900 flex items-center gap-2">
                   <FiAlertTriangle className="text-orange-500" /> Weather-Based Cure Alerts
                 </h3>
 
-                {/* Current Weather */}
                 <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl p-5 text-white">
                   <p className="text-blue-100 text-sm mb-3">Today&apos;s Weather Conditions</p>
                   <div className="flex flex-wrap gap-4">
-                    <div className="flex items-center gap-2"><FiCloud className="text-blue-200" /><span className="text-sm">{todayWeather.condition}</span></div>
-                    <div className="flex items-center gap-2"><FiSun className="text-blue-200" /><span className="text-sm">{todayWeather.temp}°C</span></div>
-                    <div className="flex items-center gap-2"><FiDroplet className="text-blue-200" /><span className="text-sm">{todayWeather.humidity}% humidity</span></div>
-                    <div className="flex items-center gap-2"><FiWind className="text-blue-200" /><span className="text-sm">Wind: {todayWeather.windSpeed} km/h</span></div>
+                    <div className="flex items-center gap-2"><FiCloud className="text-blue-200" /><span className="text-sm">{weather.description}</span></div>
+                    <div className="flex items-center gap-2"><FiSun className="text-blue-200" /><span className="text-sm">{weather.temp}°C</span></div>
+                    <div className="flex items-center gap-2"><FiDroplet className="text-blue-200" /><span className="text-sm">{weather.humidity}% humidity</span></div>
+                    <div className="flex items-center gap-2"><FiWind className="text-blue-200" /><span className="text-sm">Wind: {weather.wind_speed} km/h</span></div>
                   </div>
                 </div>
 
-                {/* Alert Cards */}
-                {weatherAlerts.map((alert, i) => {
-                  const styles = {
-                    danger: { bg: 'bg-red-50', border: 'border-red-200', iconBg: 'bg-red-100 text-red-600', title: 'text-red-800', badge: 'bg-red-100 text-red-700', badgeText: 'DO NOT SPRAY' },
-                    warning: { bg: 'bg-orange-50', border: 'border-orange-200', iconBg: 'bg-orange-100 text-orange-600', title: 'text-orange-800', badge: 'bg-orange-100 text-orange-700', badgeText: 'ACTION NEEDED' },
-                    info: { bg: 'bg-blue-50', border: 'border-blue-200', iconBg: 'bg-blue-100 text-blue-600', title: 'text-blue-800', badge: 'bg-blue-100 text-blue-700', badgeText: 'RECOMMENDED' },
-                  }
-                  const s = styles[alert.type]
-                  return (
-                    <div key={i} className={`${s.bg} rounded-2xl border ${s.border} p-5`}>
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${s.iconBg}`}><FiAlertTriangle /></div>
-                          <h4 className={`font-bold ${s.title}`}>{alert.title}</h4>
-                        </div>
-                        <span className={`text-xs font-bold px-2 py-1 rounded-full ${s.badge}`}>{s.badgeText}</span>
-                      </div>
-                      <p className="text-sm text-gray-700 pl-[52px]">{alert.message}</p>
-                      <div className="flex items-start gap-2 mt-3 ml-[52px] bg-white/60 rounded-xl p-3">
-                        <FiClock className="text-primary shrink-0 mt-0.5" />
-                        <p className="text-sm font-medium text-gray-800">{alert.action}</p>
-                      </div>
+                {weather.rain_chance > 50 && (
+                  <div className="bg-red-50 rounded-2xl border border-red-200 p-5">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-red-100 text-red-600"><FiAlertTriangle /></div>
+                      <h4 className="font-bold text-red-800">Do NOT Spray Pesticide/Fungicide Today</h4>
                     </div>
-                  )
-                })}
-
-                {/* Weekly Spray Plan */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                  <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <FiInfo className="text-primary" /> Weekly Cure Plan for Leaf Blight
-                  </h3>
-                  <div className="space-y-3">
-                    {[
-                      { day: 'Today (Mon)', action: 'Do NOT spray — rain expected. Remove affected leaves & improve drainage.', safe: false, icon: <FiCloud /> },
-                      { day: 'Tomorrow (Tue)', action: 'Rain likely — continue leaf removal, clear drainage channels.', safe: false, icon: <FiCloud /> },
-                      { day: 'Wednesday', action: 'Dry day — spray Mancozeb 75% WP @ 2g/liter (5-7 AM).', safe: true, icon: <FiSun /> },
-                      { day: 'Thursday', action: 'Backup spray day if Wednesday is missed.', safe: true, icon: <FiSun /> },
-                      { day: 'Friday onwards', action: 'Monitor for new symptoms. Apply second spray if needed after 7 days.', safe: null, icon: <FiAlertTriangle /> },
-                    ].map((d, i) => (
-                      <div key={i} className={`flex items-center justify-between p-3 rounded-xl border ${
-                        d.safe === true ? 'bg-green-50 border-green-200' : d.safe === false ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'
-                      }`}>
-                        <div className="flex items-center gap-3">
-                          <span className={d.safe === true ? 'text-green-600' : d.safe === false ? 'text-red-600' : 'text-gray-500'}>{d.icon}</span>
-                          <div>
-                            <p className="font-medium text-gray-900 text-sm">{d.day}</p>
-                            <p className={`text-xs ${d.safe === true ? 'text-green-600' : d.safe === false ? 'text-red-600' : 'text-gray-500'}`}>{d.action}</p>
-                          </div>
-                        </div>
-                        <span className={`text-xs font-bold px-2 py-1 rounded-full ${
-                          d.safe === true ? 'bg-green-100 text-green-700' : d.safe === false ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'
-                        }`}>
-                          {d.safe === true ? 'SAFE' : d.safe === false ? 'NO SPRAY' : 'MONITOR'}
-                        </span>
-                      </div>
-                    ))}
+                    <p className="text-sm text-gray-700 pl-[52px]">Rain expected with {weather.rain_chance}% chance. Any chemical sprayed today will wash off. Wait for dry weather.</p>
                   </div>
-                </div>
+                )}
+
+                {weather.humidity > 70 && (
+                  <div className="bg-orange-50 rounded-2xl border border-orange-200 p-5">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-orange-100 text-orange-600"><FiAlertTriangle /></div>
+                      <h4 className="font-bold text-orange-800">Excess Moisture May Worsen Condition</h4>
+                    </div>
+                    <p className="text-sm text-gray-700 pl-[52px]">Humidity is {weather.humidity}%. Improve drainage and air circulation.</p>
+                  </div>
+                )}
+
+                {weather.rain_chance <= 50 && (
+                  <div className="bg-green-50 rounded-2xl border border-green-200 p-5">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-green-100 text-green-600"><FiCheckCircle /></div>
+                      <h4 className="font-bold text-green-800">Good Conditions for Treatment</h4>
+                    </div>
+                    <p className="text-sm text-gray-700 pl-[52px]">Weather is suitable. Apply treatment in early morning (5-7 AM).</p>
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -1,9 +1,13 @@
 {
   "nav": {
     "dashboard": "డాష్‌బోర్డ్",
+    "groupFarm": "ఫారం నిర్వహణ",
+    "groupWeatherWater": "వాతావరణం & నీరు",
+    "groupCrop": "పంట నిర్వహణ",
+    "groupMarket": "మార్కెట్ & విశ్లేషణ",
     "landRegistration": "భూమి నమోదు",
     "farmProfile": "ఫారం ప్రొఫైల్",
-    "weather": "వాతావరణం",
+    "weather": "వాతావరణ ముందస్తు",
     "waterManagement": "నీటి నిర్వహణ",
     "marketPrices": "మార్కెట్ ధరలు",
     "problemSolver": "సమస్య పరిష్కారం",
@@ -12,7 +16,7 @@
     "fertilizerGuide": "ఎరువుల గైడ్",
     "weedManagement": "కలుపు నిర్వహణ",
     "cropProtection": "పంట రక్షణ",
-    "valiVideoCall": "వాలి వీడియో కాల్",
+    "valiVideoCall": "AI సహాయకుడు",
     "analytics": "విశ్లేషణ",
     "settings": "సెట్టింగ్‌లు",
     "logout": "లాగ్ అవుట్"

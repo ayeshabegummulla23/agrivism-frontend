@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Sidebar from '../components/Sidebar'
 import DashboardHeader from '../components/DashboardHeader'
 import { FiMic, FiMicOff, FiPhone, FiPhoneOff, FiSettings, FiVolume2, FiVolumeX } from 'react-icons/fi'
 import { GiPlantRoots } from 'react-icons/gi'
 import { useLanguage } from '../i18n/useLanguage'
+import { chat } from '../services/api'
 
 const suggestedQuestions = [
   'How much water does my crop need today?',
@@ -12,24 +13,6 @@ const suggestedQuestions = [
   'Which crop should I grow this season?',
   "Show today's market prices.",
 ]
-
-const aiResponses = {
-  water: "Based on your farm profile — Rice, 2.5 Acres, Red Soil — your crop needs approximately 2,000 liters of water today. I recommend irrigating between 5:30 AM and 7:00 AM for optimal absorption. With today's humidity at 65%, you can reduce watering by about 10%.",
-  weather: "Today in Kaveripattinam: 28°C, Partly Cloudy. Humidity: 65%, Wind: 12 km/h SW. Rain chance: 40%. There's a weather alert for heavy rainfall on Wednesday. I recommend completing any pending field work before then.",
-  yellow: "Yellow leaves can indicate several issues: Nitrogen deficiency, overwatering, root rot, or early blight. Since your crop is Rice in Red Soil, I'd recommend checking soil moisture levels first. If the lower leaves are yellowing, it's likely nitrogen deficiency. Apply urea at 46 kg per hectare.",
-  crop: "Based on current market trends, soil analysis, and upcoming weather, I recommend: 1. Turmeric — High demand, ₹12,500 per quintal. 2. Cotton — Stable prices, ₹6,800 per quintal. 3. Tomato — Quick harvest cycle. Your Red Soil and Borewell setup are ideal for turmeric cultivation.",
-  market: "Here are today's top prices near Kaveripattinam: Rice ₹2,850 per quintal at Thanjavur, up 3.2%. Tomato ₹1,200 per quintal at Erode, up 5.8%. Turmeric ₹12,500 per quintal at Salem, up 4.2%. Best selling market today: Thanjavur Mandi for Rice.",
-}
-
-function getAIResponse(message) {
-  const lower = message.toLowerCase()
-  if (lower.includes('water') || lower.includes('irrigat')) return aiResponses.water
-  if (lower.includes('weather') || lower.includes('temperature')) return aiResponses.weather
-  if (lower.includes('yellow') || lower.includes('leaves')) return aiResponses.yellow
-  if (lower.includes('crop') || lower.includes('grow') || lower.includes('season')) return aiResponses.crop
-  if (lower.includes('market') || lower.includes('price')) return aiResponses.market
-  return "I understand your question. Let me analyze your farm data. In the meantime, check the Weather or Market Prices sections for real-time data. I'll have a detailed response ready shortly."
-}
 
 function TypewriterTextInner({ text, speed = 25, onComplete }) {
   const [displayed, setDisplayed] = useState('')
@@ -58,16 +41,105 @@ function TypewriterText({ text, ...props }) {
   return <TypewriterTextInner key={text} text={text} {...props} />
 }
 
+function useSpeechRecognition(onResult) {
+  const recognitionRef = useRef(null)
+  const [isListening, setIsListening] = useState(false)
+  const [transcript, setTranscript] = useState('')
+
+  const start = useCallback(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SpeechRecognition) return
+
+    const recognition = new SpeechRecognition()
+    recognition.continuous = false
+    recognition.interimResults = true
+    recognition.lang = 'en-IN'
+
+    recognition.onresult = (event) => {
+      let finalTranscript = ''
+      let interimTranscript = ''
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript
+        } else {
+          interimTranscript += event.results[i][0].transcript
+        }
+      }
+      setTranscript(interimTranscript || finalTranscript)
+      if (finalTranscript) {
+        onResult(finalTranscript)
+      }
+    }
+
+    recognition.onend = () => {
+      setIsListening(false)
+    }
+
+    recognition.onerror = () => {
+      setIsListening(false)
+    }
+
+    recognitionRef.current = recognition
+    recognition.start()
+    setIsListening(true)
+  }, [onResult])
+
+  const stop = useCallback(() => {
+    recognitionRef.current?.stop()
+    setIsListening(false)
+    setTranscript('')
+  }, [])
+
+  return { isListening, transcript, start, stop }
+}
+
+function useSpeechSynthesis() {
+  const [isSpeaking, setIsSpeaking] = useState(false)
+
+  const speak = useCallback((text, lang = 'en-IN') => {
+    if (!window.speechSynthesis) return
+
+    window.speechSynthesis.cancel()
+
+    const utterance = new SpeechSynthesisUtterance(text)
+    utterance.lang = lang
+    utterance.rate = 1
+    utterance.pitch = 1
+
+    utterance.onstart = () => setIsSpeaking(true)
+    utterance.onend = () => setIsSpeaking(false)
+    utterance.onerror = () => setIsSpeaking(false)
+
+    window.speechSynthesis.speak(utterance)
+  }, [])
+
+  const stop = useCallback(() => {
+    window.speechSynthesis?.cancel()
+    setIsSpeaking(false)
+  }, [])
+
+  return { isSpeaking, speak, stop }
+}
+
+const langMap = { en: 'en-IN', hi: 'hi-IN', te: 'te-IN', ta: 'ta-IN' }
+
 export default function AIAssistant() {
   const { t, lang, changeLang, languages } = useLanguage()
   const [callActive, setCallActive] = useState(false)
   const [callState, setCallState] = useState('idle')
   const [subtitle, setSubtitle] = useState('')
   const [callDuration, setCallDuration] = useState(0)
-  const [isMuted, setIsMuted] = useState(false)
   const [isSpeakerOn, setIsSpeakerOn] = useState(true)
   const [showSettings, setShowSettings] = useState(false)
+  const [voiceTranscript, setVoiceTranscript] = useState('')
   const durationRef = useRef(null)
+  const handleQuestionRef = useRef(null)
+  const prevTranscriptRef = useRef('')
+
+  const { isListening, transcript, start: startListening, stop: stopListening } = useSpeechRecognition((text) => {
+    handleQuestionRef.current?.(text)
+  })
+  const { speak, stop: stopSpeaking } = useSpeechSynthesis()
 
   useEffect(() => {
     if (callActive) {
@@ -80,6 +152,13 @@ export default function AIAssistant() {
     return () => clearInterval(durationRef.current)
   }, [callActive])
 
+  useEffect(() => {
+    if (transcript && transcript !== prevTranscriptRef.current) {
+      prevTranscriptRef.current = transcript
+      setVoiceTranscript(transcript)
+    }
+  }, [transcript])
+
   const formatTime = (s) => {
     const m = Math.floor(s / 60)
     const sec = s % 60
@@ -90,7 +169,11 @@ export default function AIAssistant() {
     setCallActive(true)
     setCallDuration(0)
     setCallState('speaking')
-    setSubtitle("Hello! I'm VALI — your Virtual Agriculture & Land Intelligence assistant. I can help with weather, irrigation, crops, disease diagnosis, and farm management. How can I help you today?")
+    const greeting = "Hello! I'm VALI — your Virtual Agriculture & Land Intelligence assistant. I can help with weather, irrigation, crops, disease diagnosis, and farm management. How can I help you today?"
+    setSubtitle(greeting)
+    if (isSpeakerOn) {
+      speak(greeting, langMap[lang] || 'en-IN')
+    }
   }
 
   const endCall = () => {
@@ -98,6 +181,8 @@ export default function AIAssistant() {
     setCallDuration(0)
     setCallState('idle')
     setSubtitle(t('ai.callEnded'))
+    stopListening()
+    stopSpeaking()
   }
 
   const handleQuestion = (question) => {
@@ -105,11 +190,37 @@ export default function AIAssistant() {
 
     setCallState('thinking')
     setSubtitle(`You asked: "${question}"`)
+    stopListening()
 
-    setTimeout(() => {
+    chat(question, lang).then((data) => {
       setCallState('speaking')
-      setSubtitle(getAIResponse(question))
-    }, 1500)
+      setSubtitle(data.reply)
+      if (isSpeakerOn) {
+        speak(data.reply, langMap[lang] || 'en-IN')
+      }
+    }).catch(() => {
+      setCallState('speaking')
+      const fallback = "I'm having trouble connecting to the server. Please try again later."
+      setSubtitle(fallback)
+      if (isSpeakerOn) {
+        speak(fallback, langMap[lang] || 'en-IN')
+      }
+    })
+  }
+
+  useEffect(() => {
+    handleQuestionRef.current = handleQuestion
+  })
+
+  const toggleMic = () => {
+    if (!callActive) return
+    if (isListening) {
+      stopListening()
+      setCallState('speaking')
+    } else {
+      setCallState('listening')
+      startListening()
+    }
   }
 
   const getAvatarClasses = () => {
@@ -135,18 +246,18 @@ export default function AIAssistant() {
   }
 
   const getStateLabel = () => {
+    if (isListening) return t('ai.listening')
     switch (callState) {
       case 'speaking': return t('ai.isSpeaking')
-      case 'listening': return t('ai.listening')
       case 'thinking': return t('ai.thinking')
       default: return callActive ? t('ai.connected') : t('ai.ready')
     }
   }
 
   const getStateLabelColor = () => {
+    if (isListening) return 'text-blue-600'
     switch (callState) {
       case 'speaking': return 'text-green-600'
-      case 'listening': return 'text-blue-600'
       case 'thinking': return 'text-amber-600'
       default: return 'text-gray-500'
     }
@@ -186,8 +297,11 @@ export default function AIAssistant() {
                 </>
               )}
 
-              {callState === 'listening' && (
-                <div className="absolute inset-0 rounded-full bg-blue-500/20 animate-pulse" />
+              {isListening && (
+                <>
+                  <div className="absolute inset-0 rounded-full bg-blue-500/20 animate-pulse" />
+                  <div className="absolute -inset-4 rounded-full border border-blue-500/20 animate-ping" style={{ animationDuration: '1.5s' }} />
+                </>
               )}
 
               {callState === 'thinking' && (
@@ -198,7 +312,7 @@ export default function AIAssistant() {
                 <GiPlantRoots className="text-white text-6xl md:text-7xl" />
               </div>
 
-              {callState === 'listening' && (
+              {isListening && (
                 <div className="absolute bottom-2 right-2 w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center animate-bounce">
                   <FiMic className="text-white" />
                 </div>
@@ -209,6 +323,14 @@ export default function AIAssistant() {
             <h1 className="text-2xl font-bold text-white mb-1">VALI</h1>
             <p className="text-sm text-gray-400 mb-2">{t('ai.subtitle')}</p>
             <p className="text-xs text-gray-500 mb-6">{t('ai.poweredBy')}</p>
+
+            {/* Voice Transcript (when listening) */}
+            {isListening && voiceTranscript && (
+              <div className="w-full bg-blue-900/30 backdrop-blur-sm rounded-2xl p-4 mb-4 border border-blue-500/30">
+                <p className="text-xs text-blue-400 mb-1">🎤 Hearing:</p>
+                <p className="text-sm text-blue-200">{voiceTranscript}</p>
+              </div>
+            )}
 
             {/* Subtitle Area */}
             <div className="w-full bg-gray-800/80 backdrop-blur-sm rounded-2xl p-5 mb-6 min-h-[80px] border border-gray-700/50">
@@ -223,15 +345,21 @@ export default function AIAssistant() {
 
             {/* Call Controls */}
             <div className="flex items-center gap-4 mb-8">
+              {/* Mic (voice input) */}
               <button
-                onClick={() => setIsMuted(!isMuted)}
+                onClick={toggleMic}
+                disabled={!callActive}
                 className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
-                  isMuted ? 'bg-red-500/20 text-red-400' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                }`}
+                  isListening
+                    ? 'bg-blue-500 text-white animate-pulse'
+                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                } disabled:opacity-40 disabled:cursor-not-allowed`}
+                title={isListening ? 'Stop listening' : 'Start voice input'}
               >
-                {isMuted ? <FiMicOff /> : <FiMic />}
+                {isListening ? <FiMicOff /> : <FiMic />}
               </button>
 
+              {/* Start/End Call */}
               <button
                 onClick={callActive ? endCall : startCall}
                 className={`w-16 h-16 rounded-full flex items-center justify-center transition-all shadow-lg ${
@@ -243,15 +371,21 @@ export default function AIAssistant() {
                 {callActive ? <FiPhoneOff className="text-xl" /> : <FiPhone className="text-xl" />}
               </button>
 
+              {/* Speaker (TTS toggle) */}
               <button
-                onClick={() => setIsSpeakerOn(!isSpeakerOn)}
+                onClick={() => {
+                  setIsSpeakerOn(!isSpeakerOn)
+                  if (isSpeakerOn) stopSpeaking()
+                }}
                 className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
                   !isSpeakerOn ? 'bg-red-500/20 text-red-400' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                 }`}
+                title={isSpeakerOn ? 'Speaker Off' : 'Speaker On'}
               >
                 {isSpeakerOn ? <FiVolume2 /> : <FiVolumeX />}
               </button>
 
+              {/* Settings */}
               <button
                 onClick={() => setShowSettings(!showSettings)}
                 className="w-12 h-12 rounded-full bg-gray-700 text-gray-300 hover:bg-gray-600 flex items-center justify-center transition-all"
@@ -284,6 +418,18 @@ export default function AIAssistant() {
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-400">{t('ai.autoTranslate')}</span>
                     <span className="text-sm text-green-400">On</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-400">Voice Input</span>
+                    <span className="text-xs text-gray-300">
+                      {window.SpeechRecognition || window.webkitSpeechRecognition ? 'Supported' : 'Not supported in this browser'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-400">Voice Output</span>
+                    <span className="text-xs text-gray-300">
+                      {window.speechSynthesis ? 'Supported' : 'Not supported in this browser'}
+                    </span>
                   </div>
                 </div>
               </div>

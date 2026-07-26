@@ -3,11 +3,25 @@ import Sidebar from '../components/Sidebar'
 import DashboardHeader from '../components/DashboardHeader'
 import { FiUser, FiBell, FiGlobe, FiMoon, FiChevronRight, FiLogOut } from 'react-icons/fi'
 import { useLanguage } from '../i18n/useLanguage'
+import { getCurrentUser, logout } from '../services/api'
+import { useNavigate } from 'react-router-dom'
 
 export default function Settings() {
   const [darkMode, setDarkMode] = useState(false)
   const [notifications, setNotifications] = useState(true)
   const { lang, changeLang, t, languages } = useLanguage()
+  const navigate = useNavigate()
+  const user = getCurrentUser()
+
+  const initials = user ? `${user.first_name?.[0] || ''}${user.last_name?.[0] || ''}`.toUpperCase() : 'AG'
+  const fullName = user ? `${user.first_name} ${user.last_name}` : 'Guest User'
+  const email = user?.email || ''
+  const phone = user?.mobile || ''
+
+  const handleLogout = () => {
+    logout()
+    navigate('/login')
+  }
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -16,7 +30,6 @@ export default function Settings() {
         <DashboardHeader title={t('settings.title')} />
         <main className="flex-1 p-6 overflow-y-auto">
           <div className="max-w-2xl mx-auto space-y-6">
-            {/* Profile Section */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <FiUser className="text-primary" /> {t('settings.profile')}
@@ -24,19 +37,18 @@ export default function Settings() {
               <div className="space-y-4">
                 <div className="flex items-center gap-4">
                   <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center text-primary font-bold text-xl">
-                    RK
+                    {initials}
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-900">Rajesh Kumar</p>
-                    <p className="text-sm text-gray-500">rajesh@example.com</p>
-                    <p className="text-sm text-gray-500">+91 98765 43210</p>
+                    <p className="font-semibold text-gray-900">{fullName}</p>
+                    {email && <p className="text-sm text-gray-500">{email}</p>}
+                    {phone && <p className="text-sm text-gray-500">{phone}</p>}
                   </div>
                 </div>
                 <button className="text-primary text-sm font-medium hover:underline">{t('common.save')}</button>
               </div>
             </div>
 
-            {/* Notifications */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -55,7 +67,6 @@ export default function Settings() {
               </div>
             </div>
 
-            {/* Language */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -77,7 +88,6 @@ export default function Settings() {
               </div>
             </div>
 
-            {/* Dark Mode */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -96,10 +106,9 @@ export default function Settings() {
               </div>
             </div>
 
-            {/* Account */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
               <h3 className="font-semibold text-gray-900">{t('settings.account')}</h3>
-              {['Change Password', 'Privacy Settings', 'Delete Account'].map((item) => (
+              {['Change Password', 'Privacy Settings'].map((item) => (
                 <button key={item} className="w-full flex items-center justify-between py-3 border-b border-gray-50 last:border-0 hover:text-primary transition-colors">
                   <span className="text-sm text-gray-700">{item}</span>
                   <FiChevronRight className="text-gray-400" />
@@ -107,8 +116,10 @@ export default function Settings() {
               ))}
             </div>
 
-            {/* Logout */}
-            <button className="w-full bg-red-50 text-red-600 font-semibold py-3 rounded-xl hover:bg-red-100 transition-colors flex items-center justify-center gap-2">
+            <button
+              onClick={handleLogout}
+              className="w-full bg-red-50 text-red-600 font-semibold py-3 rounded-xl hover:bg-red-100 transition-colors flex items-center justify-center gap-2"
+            >
               <FiLogOut /> {t('nav.logout')}
             </button>
           </div>

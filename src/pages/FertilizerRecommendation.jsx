@@ -1,74 +1,50 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
 import DashboardHeader from '../components/DashboardHeader'
-import { FiAlertTriangle, FiCheckCircle, FiCloud, FiDroplet, FiSun, FiThermometer, FiClock, FiShield, FiInfo } from 'react-icons/fi'
+import { FiAlertTriangle, FiCheckCircle, FiCloud, FiDroplet, FiSun, FiThermometer, FiClock, FiShield, FiInfo, FiLoader } from 'react-icons/fi'
+import { recommendFertilizer, getDashboardWeather } from '../services/api'
 
-const currentWeather = {
-  temp: 28,
-  humidity: 75,
-  condition: 'Rainy',
-  rainChance: 80,
-  windSpeed: 8,
-}
-
-const fertilizerPlan = [
-  {
-    name: 'Urea (46-0-0)',
-    nutrient: 'Nitrogen (N)',
-    dosage: '46 kg/hectare',
-    timing: 'Basal + Top-dress at 30 & 60 days',
-    crop: 'Rice',
-    icon: '🟢',
-    color: 'bg-green-50 border-green-200',
-  },
-  {
-    name: 'DAP (18-46-0)',
-    nutrient: 'Phosphorus (P)',
-    dosage: '100 kg/hectare',
-    timing: 'At the time of transplanting',
-    crop: 'Rice',
-    icon: '🔵',
-    color: 'bg-blue-50 border-blue-200',
-  },
-  {
-    name: 'MOP (0-0-60)',
-    nutrient: 'Potassium (K)',
-    dosage: '50 kg/hectare',
-    timing: 'At transplanting + 45 days',
-    crop: 'Rice',
-    icon: '🟣',
-    color: 'bg-purple-50 border-purple-200',
-  },
-  {
-    name: 'Zinc Sulphate',
-    nutrient: 'Zinc (Zn)',
-    dosage: '25 kg/hectare',
-    timing: 'Before transplanting (soil application)',
-    crop: 'Rice',
-    icon: '⚪',
-    color: 'bg-gray-50 border-gray-200',
-  },
-]
-
-const sprayGuidelines = [
-  { label: 'Fungicide (Mancozeb)', timing: '7 days before harvest — do NOT spray', safe: false },
-  { label: 'Insecticide (Chlorpyrifos)', timing: 'Safe to spray today', safe: true },
-  { label: 'Weedicide (Butachlor)', timing: 'Apply within 3 days of transplanting', safe: true },
-  { label: 'Growth Regulator (Paclobutrazol)', timing: 'Do NOT spray — wait for dry weather', safe: false },
-]
-
-const organicOptions = [
-  { name: 'Vermicompost', dosage: '2.5 tonnes/hectare', benefit: 'Improves soil structure & microbial activity', icon: '🪱' },
-  { name: 'Neem Cake', dosage: '250 kg/hectare', benefit: 'Natural pest repellent + nitrogen source', icon: '🌿' },
-  { name: 'Panchagavya', dosage: '3% foliar spray', benefit: 'Boosts growth & immunity', icon: '🧪' },
-  { name: 'Jeevamrutham', dosage: '200 liters/acre', benefit: 'Soil microbiome enhancer', icon: '🌾' },
-]
+const stages = ['vegetative', 'flowering', 'fruiting', 'maturity']
 
 export default function FertilizerRecommendation() {
   const [selectedCrop, setSelectedCrop] = useState('Rice')
+  const [selectedStage, setSelectedStage] = useState('vegetative')
+  const [fertData, setFertData] = useState(null)
+  const [currentWeather, setCurrentWeather] = useState(null)
+  const [isLoading, setIsLoading] = useState(true)
 
-  const isRaining = currentWeather.rainChance > 50
-  const isWindy = currentWeather.windSpeed > 15
+  useEffect(() => {
+    let cancelled = false
+    getDashboardWeather().then((w) => { if (!cancelled) setCurrentWeather(w) }).catch(() => {})
+    recommendFertilizer(selectedCrop.toLowerCase(), selectedStage).then((data) => {
+      if (!cancelled) {
+        setFertData(data)
+        setIsLoading(false)
+      }
+    }).catch(() => {
+      if (!cancelled) setIsLoading(false)
+    })
+    return () => { cancelled = true }
+  }, [selectedCrop, selectedStage])
+
+  const isRaining = (currentWeather?.rain_chance ?? 0) > 50
+  const isWindy = (currentWeather?.wind_speed ?? 0) > 15
+
+  const fertilizerPlan = fertData?.recommendations?.map((r) => ({
+    name: r.name,
+    nutrient: r.name,
+    dosage: r.rate,
+    timing: r.timing,
+    crop: selectedCrop,
+    icon: '🟢',
+    color: 'bg-green-50 border-green-200',
+  })) || []
+
+  const organicOptions = fertData?.organic_alternatives?.map((o, i) => {
+    const [name, dosage] = o.split(': ')
+    const icons = ['🪱', '🌿', '🧪', '🌾']
+    return { name, dosage, benefit: `${name} for sustainable farming`, icon: icons[i % icons.length] }
+  }) || []
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -101,40 +77,40 @@ export default function FertilizerRecommendation() {
                   </h3>
                   <p className={`text-sm mt-1 ${isRaining ? 'text-red-700' : 'text-green-700'}`}>
                     {isRaining
-                      ? `Rain is expected (${currentWeather.rainChance}% chance). Spraying fertilizer or pesticides now will be washed away and waste chemicals. Wait for dry weather.`
-                      : `Current conditions are suitable for spraying. Humidity is ${currentWeather.humidity}%, wind is ${currentWeather.windSpeed} km/h. Spray early morning or late evening for best absorption.`
+                      ? `Rain is expected (${currentWeather?.rain_chance}% chance). Spraying fertilizer or pesticides now will be washed away and waste chemicals. Wait for dry weather.`
+                      : `Current conditions are suitable for spraying. Humidity is ${currentWeather?.humidity}%, wind is ${currentWeather?.wind_speed} km/h. Spray early morning or late evening for best absorption.`
                     }
                   </p>
                   <div className="flex flex-wrap gap-3 mt-3">
                     <span className={`inline-flex items-center gap-1 text-xs px-3 py-1 rounded-full ${
                       isRaining ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
                     }`}>
-                      <FiCloud /> {currentWeather.condition}
+                      <FiCloud /> {currentWeather?.description}
                     </span>
                     <span className={`inline-flex items-center gap-1 text-xs px-3 py-1 rounded-full ${
                       isRaining ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
                     }`}>
-                      <FiThermometer /> {currentWeather.temp}°C
+                      <FiThermometer /> {currentWeather?.temp}°C
                     </span>
                     <span className={`inline-flex items-center gap-1 text-xs px-3 py-1 rounded-full ${
                       isRaining ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
                     }`}>
-                      <FiDroplet /> {currentWeather.humidity}% humidity
+                      <FiDroplet /> {currentWeather?.humidity}% humidity
                     </span>
                     <span className={`inline-flex items-center gap-1 text-xs px-3 py-1 rounded-full ${
                       isWindy ? 'bg-orange-100 text-orange-700' : (isRaining ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700')
                     }`}>
-                      <FiSun /> Wind: {currentWeather.windSpeed} km/h
+                      <FiSun /> Wind: {currentWeather?.wind_speed} km/h
                     </span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Crop Selector */}
+            {/* Crop & Stage Selector */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <h3 className="font-semibold text-gray-900 mb-4">Select Crop</h3>
-              <div className="flex flex-wrap gap-3">
+              <h3 className="font-semibold text-gray-900 mb-4">Select Crop & Growth Stage</h3>
+              <div className="flex flex-wrap gap-3 mb-4">
                 {['Rice', 'Cotton', 'Tomato', 'Groundnut', 'Coconut', 'Turmeric'].map((crop) => (
                   <button
                     key={crop}
@@ -149,34 +125,55 @@ export default function FertilizerRecommendation() {
                   </button>
                 ))}
               </div>
+              <div className="flex flex-wrap gap-2">
+                {stages.map((stage) => (
+                  <button
+                    key={stage}
+                    onClick={() => setSelectedStage(stage)}
+                    className={`px-4 py-2 rounded-lg text-xs font-medium capitalize transition-all ${
+                      selectedStage === stage
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    {stage}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Fertilizer Plan */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <h3 className="font-semibold text-gray-900 mb-1">Recommended Fertilizer Plan</h3>
-              <p className="text-sm text-gray-500 mb-4">For {selectedCrop} crop based on soil type (Red Soil) and current conditions</p>
-              <div className="space-y-4">
-                {fertilizerPlan.map((f) => (
-                  <div key={f.name} className={`rounded-xl border p-4 ${f.color}`}>
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">{f.icon}</span>
-                        <div>
-                          <p className="font-semibold text-gray-900">{f.name}</p>
-                          <p className="text-sm text-gray-600">Nutrient: {f.nutrient}</p>
+              <p className="text-sm text-gray-500 mb-4">For {selectedCrop} ({selectedStage} stage) based on soil type (Red Soil)</p>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <FiLoader className="text-2xl text-primary animate-spin" />
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {fertilizerPlan.map((f) => (
+                    <div key={f.name} className={`rounded-xl border p-4 ${f.color}`}>
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">{f.icon}</span>
+                          <div>
+                            <p className="font-semibold text-gray-900">{f.name}</p>
+                            <p className="text-sm text-gray-600">Nutrient: {f.nutrient}</p>
+                          </div>
                         </div>
+                        <span className="text-sm font-bold text-gray-900 bg-white px-3 py-1 rounded-lg shadow-sm">
+                          {f.dosage}
+                        </span>
                       </div>
-                      <span className="text-sm font-bold text-gray-900 bg-white px-3 py-1 rounded-lg shadow-sm">
-                        {f.dosage}
-                      </span>
+                      <div className="flex items-center gap-2 mt-3 text-sm text-gray-600">
+                        <FiClock className="text-gray-400 shrink-0" />
+                        <span>{f.timing}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 mt-3 text-sm text-gray-600">
-                      <FiClock className="text-gray-400 shrink-0" />
-                      <span>{f.timing}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Spray Safety Guide */}
@@ -185,7 +182,10 @@ export default function FertilizerRecommendation() {
                 <FiShield className="text-primary" /> Spray Safety Guide
               </h3>
               <div className="space-y-3">
-                {sprayGuidelines.map((g, i) => (
+                {[
+                  { label: 'Fungicide (Mancozeb)', timing: isRaining ? 'Do NOT spray — rain expected' : 'Safe to spray today', safe: !isRaining },
+                  { label: 'Insecticide (Chlorpyrifos)', timing: isWindy ? 'Avoid — wind too strong' : 'Safe to spray today', safe: !isWindy },
+                ].map((g, i) => (
                   <div key={i} className={`flex items-center justify-between p-4 rounded-xl border ${
                     g.safe ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
                   }`}>
@@ -217,18 +217,24 @@ export default function FertilizerRecommendation() {
                 🌿 Organic Alternatives
               </h3>
               <p className="text-sm text-gray-500 mb-4">Eco-friendly fertilizer options for sustainable farming</p>
-              <div className="grid sm:grid-cols-2 gap-4">
-                {organicOptions.map((o) => (
-                  <div key={o.name} className="bg-green-50/50 rounded-xl border border-green-100 p-4">
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className="text-2xl">{o.icon}</span>
-                      <p className="font-semibold text-gray-900">{o.name}</p>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <FiLoader className="text-2xl text-primary animate-spin" />
+                </div>
+              ) : (
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {organicOptions.map((o) => (
+                    <div key={o.name} className="bg-green-50/50 rounded-xl border border-green-100 p-4">
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className="text-2xl">{o.icon}</span>
+                        <p className="font-semibold text-gray-900">{o.name}</p>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-1">{o.benefit}</p>
+                      <p className="text-xs text-primary font-medium">Dosage: {o.dosage}</p>
                     </div>
-                    <p className="text-sm text-gray-600 mb-1">{o.benefit}</p>
-                    <p className="text-xs text-primary font-medium">Dosage: {o.dosage}</p>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Tips */}

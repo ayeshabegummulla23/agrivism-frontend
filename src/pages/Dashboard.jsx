@@ -1,6 +1,6 @@
+import { useState, useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
 import DashboardHeader from '../components/DashboardHeader'
-
 import WeatherCard from '../components/WeatherCard'
 import WaterCard from '../components/WaterCard'
 import MarketPriceCard from '../components/MarketPriceCard'
@@ -9,30 +9,24 @@ import NotificationCard from '../components/NotificationCard'
 import StatsCard from '../components/StatsCard'
 import { FiMap, FiTarget, FiCalendar, FiTrendingUp, FiShield } from 'react-icons/fi'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-
 import { useNavigate } from 'react-router-dom'
 import { useLanguage } from '../i18n/useLanguage'
-
-const chartData = [
-  { month: 'Jan', expenses: 12000, income: 18000 },
-  { month: 'Feb', expenses: 15000, income: 22000 },
-  { month: 'Mar', expenses: 18000, income: 25000 },
-  { month: 'Apr', expenses: 14000, income: 20000 },
-  { month: 'May', expenses: 20000, income: 30000 },
-  { month: 'Jun', expenses: 16000, income: 28000 },
-]
-
-const recentActivities = [
-  { id: 1, text: 'Farm "Green Valley" registered successfully', time: '2 hours ago' },
-  { id: 2, text: 'Weather alert: Heavy rain expected tomorrow', time: '4 hours ago' },
-  { id: 3, text: 'Market price updated for Rice (₹2,850/q)', time: '6 hours ago' },
-  { id: 4, text: 'VALI detected early blight risk on Plot 3', time: '1 day ago' },
-  { id: 5, text: 'Water usage report generated', time: '2 days ago' },
-]
+import { getDashboardStats, getDashboardChart, getDashboardActivities, getMarketPrices } from '../services/api'
 
 export default function Dashboard() {
   const navigate = useNavigate()
   const { t } = useLanguage()
+  const [stats, setStats] = useState(null)
+  const [chartData, setChartData] = useState([])
+  const [activities, setActivities] = useState([])
+  const [prices, setPrices] = useState([])
+
+  useEffect(() => {
+    getDashboardStats().then(setStats).catch(() => {})
+    getDashboardChart().then((d) => setChartData(d.data || [])).catch(() => {})
+    getDashboardActivities().then((d) => setActivities(d.activities || [])).catch(() => {})
+    getMarketPrices().then((d) => setPrices((d.prices || []).slice(0, 4))).catch(() => {})
+  }, [])
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -42,10 +36,10 @@ export default function Dashboard() {
         <main className="flex-1 p-6 space-y-6 overflow-y-auto">
           {/* Stats Row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatsCard label={t('dashboard.totalFarms')} value="3" icon={<FiMap />} trend={12} />
-            <StatsCard label={t('dashboard.activeCrops')} value="5" icon={<FiTarget />} trend={8} />
-            <StatsCard label={t('dashboard.daysSincePlanting')} value="45" icon={<FiCalendar />} />
-            <StatsCard label={t('dashboard.monthlyRevenue')} value="₹45,000" icon={<FiTrendingUp />} trend={15} />
+            <StatsCard label={t('dashboard.totalFarms')} value={stats?.total_farms ?? '-'} icon={<FiMap />} trend={stats?.farm_trend} />
+            <StatsCard label={t('dashboard.activeCrops')} value={stats?.active_crops ?? '-'} icon={<FiTarget />} trend={stats?.crop_trend} />
+            <StatsCard label={t('dashboard.daysSincePlanting')} value={stats?.days_since_planting ?? '-'} icon={<FiCalendar />} trend={stats?.days_trend} />
+            <StatsCard label={t('dashboard.monthlyRevenue')} value={`₹${(stats?.monthly_revenue ?? 0).toLocaleString()}`} icon={<FiTrendingUp />} trend={stats?.revenue_trend} />
           </div>
 
           {/* Weather + Water + AI */}
@@ -111,10 +105,9 @@ export default function Dashboard() {
           <div>
             <h3 className="font-semibold text-gray-900 mb-4">{t('dashboard.todaysMarketPrices')}</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <MarketPriceCard crop="Rice (Paddy)" price={2850} change={3.2} market="Thanjavur Mandi" />
-              <MarketPriceCard crop="Cotton" price={6800} change={-1.5} market="Coimbatore Mandi" />
-              <MarketPriceCard crop="Tomato" price={1200} change={5.8} market="Erode Mandi" />
-              <MarketPriceCard crop="Groundnut" price={5200} change={2.1} market="Tirupur Mandi" />
+              {prices.map((p) => (
+                <MarketPriceCard key={p.crop} crop={p.crop} price={p.price} change={p.change} market={p.market} />
+              ))}
             </div>
           </div>
 
@@ -122,9 +115,9 @@ export default function Dashboard() {
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
             <h3 className="font-semibold text-gray-900 mb-4">{t('dashboard.recentActivities')}</h3>
             <div className="space-y-3">
-              {recentActivities.map((a) => (
-                <div key={a.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                  <p className="text-sm text-gray-700">{a.text}</p>
+              {activities.map((a, i) => (
+                <div key={i} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                  <p className="text-sm text-gray-700">{a.title}</p>
                   <span className="text-xs text-gray-400 whitespace-nowrap ml-4">{a.time}</span>
                 </div>
               ))}

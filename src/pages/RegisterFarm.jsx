@@ -1,23 +1,53 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import DashboardHeader from '../components/DashboardHeader'
 import UploadCard from '../components/UploadCard'
 import OCRPreviewCard from '../components/OCRPreviewCard'
 import MapPlaceholder from '../components/MapPlaceholder'
-import { FiCheckCircle, FiArrowRight, FiArrowLeft } from 'react-icons/fi'
-
-const mockExtractedData = {
-  'Owner Name': 'Rajesh Kumar S',
-  'Survey Number': '12/2A',
-  'Khata Number': '458',
-  'Village': 'Kaveripattinam',
-  'Area': '2.5 Acres',
-  'District': 'Krishnagiri',
-  'State': 'Tamil Nadu',
-}
+import { FiCheckCircle, FiArrowRight, FiArrowLeft, FiLoader } from 'react-icons/fi'
+import { registerFarm } from '../services/api'
 
 export default function RegisterFarm() {
   const [step, setStep] = useState(1)
+  const [extractedData, setExtractedData] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const navigate = useNavigate()
+
+  const [form, setForm] = useState({
+    name: '', crop: 'Rice', area: '', soil_type: 'Red Soil',
+    village: '', district: '', state: '', water_source: 'Borewell',
+    survey_number: '', khata: '',
+  })
+
+  const update = (field) => (e) => setForm((prev) => ({ ...prev, [field]: e.target.value }))
+
+  const handleRORUpload = () => {
+    setExtractedData({
+      'Owner Name': '',
+      'Survey Number': '',
+      'Khata Number': '',
+      'Village': '',
+      'Area': '',
+      'District': '',
+      'State': '',
+    })
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+    try {
+      await registerFarm(form)
+      navigate('/farm-profile')
+    } catch (err) {
+      setError(err.message || 'Registration failed')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -49,7 +79,9 @@ export default function RegisterFarm() {
               <h2 className="text-xl font-bold text-gray-900 text-center">Upload Documents</h2>
               <p className="text-gray-500 text-center text-sm">Upload your ROR 1B and Village/FMB Sketch for AI-powered extraction</p>
               <div className="grid sm:grid-cols-2 gap-6">
-                <UploadCard title="Upload ROR 1B" subtitle="PDF, JPG, PNG (Max 10MB)" />
+                <div onClick={handleRORUpload}>
+                  <UploadCard title="Upload ROR 1B" subtitle="PDF, JPG, PNG (Max 10MB)" onUpload={handleRORUpload} />
+                </div>
                 <UploadCard title="Upload Village/FMB Sketch" subtitle="PDF, JPG, PNG (Max 10MB)" />
               </div>
               <div className="flex justify-end">
@@ -60,12 +92,30 @@ export default function RegisterFarm() {
             </div>
           )}
 
-          {/* Step 2: Extracted Information */}
+          {/* Step 2: Extracted / Manual Info */}
           {step === 2 && (
             <div className="max-w-3xl mx-auto space-y-6">
-              <h2 className="text-xl font-bold text-gray-900 text-center">Extracted Information</h2>
-              <p className="text-gray-500 text-center text-sm">Review the AI-extracted data from your documents</p>
-              <OCRPreviewCard data={mockExtractedData} />
+              <h2 className="text-xl font-bold text-gray-900 text-center">Document Information</h2>
+              <p className="text-gray-500 text-center text-sm">Review extracted data or fill in manually</p>
+
+              {extractedData ? (
+                <OCRPreviewCard data={extractedData} />
+              ) : (
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                  <p className="text-sm text-gray-500 mb-4">No document uploaded yet. Fill in details manually:</p>
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Survey Number</label>
+                      <input value={form.survey_number} onChange={update('survey_number')} placeholder="e.g. 12/2A" className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Khata Number</label>
+                      <input value={form.khata} onChange={update('khata')} placeholder="e.g. 458" className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-between">
                 <button onClick={() => setStep(1)} className="px-6 py-3 border border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors flex items-center gap-2">
                   <FiArrowLeft /> Back
@@ -83,11 +133,6 @@ export default function RegisterFarm() {
               <h2 className="text-xl font-bold text-gray-900 text-center">Confirm Farm Location</h2>
               <p className="text-gray-500 text-center text-sm">Pin your farm location on the map</p>
               <MapPlaceholder height="h-96" />
-              <div className="text-center">
-                <button className="px-6 py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary-dark transition-colors">
-                  Confirm Farm Location
-                </button>
-              </div>
               <div className="flex justify-between">
                 <button onClick={() => setStep(2)} className="px-6 py-3 border border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors flex items-center gap-2">
                   <FiArrowLeft /> Back
@@ -104,30 +149,36 @@ export default function RegisterFarm() {
             <div className="max-w-3xl mx-auto space-y-6">
               <h2 className="text-xl font-bold text-gray-900 text-center">Farm Registration</h2>
               <p className="text-gray-500 text-center text-sm">Complete your farm details</p>
+
+              {error && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{error}</div>
+              )}
+
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
+                <form className="space-y-4" onSubmit={handleSubmit}>
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Farm Name</label>
-                      <input type="text" placeholder="e.g. Green Valley Farm" className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
+                      <input value={form.name} onChange={update('name')} placeholder="e.g. Green Valley Farm" required className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Crop</label>
-                      <select className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary bg-white">
+                      <select value={form.crop} onChange={update('crop')} className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary bg-white">
                         <option>Rice</option>
                         <option>Cotton</option>
                         <option>Tomato</option>
                         <option>Groundnut</option>
                         <option>Coconut</option>
+                        <option>Turmeric</option>
                       </select>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Area (Acres)</label>
-                      <input type="text" placeholder="e.g. 2.5" className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
+                      <input value={form.area} onChange={update('area')} placeholder="e.g. 2.5" required className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Soil Type</label>
-                      <select className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary bg-white">
+                      <select value={form.soil_type} onChange={update('soil_type')} className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary bg-white">
                         <option>Red Soil</option>
                         <option>Black Soil</option>
                         <option>Clay Soil</option>
@@ -137,19 +188,19 @@ export default function RegisterFarm() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Village</label>
-                      <input type="text" placeholder="e.g. Kaveripattinam" className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
+                      <input value={form.village} onChange={update('village')} placeholder="e.g. Kaveripattinam" required className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">District</label>
-                      <input type="text" placeholder="e.g. Krishnagiri" className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
+                      <input value={form.district} onChange={update('district')} placeholder="e.g. Krishnagiri" required className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
-                      <input type="text" placeholder="e.g. Tamil Nadu" className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
+                      <input value={form.state} onChange={update('state')} placeholder="e.g. Tamil Nadu" required className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Water Source</label>
-                      <select className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary bg-white">
+                      <select value={form.water_source} onChange={update('water_source')} className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary bg-white">
                         <option>Borewell</option>
                         <option>Well</option>
                         <option>River</option>
@@ -159,19 +210,19 @@ export default function RegisterFarm() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Survey Number</label>
-                      <input type="text" placeholder="e.g. 12/2A" className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
+                      <input value={form.survey_number} onChange={update('survey_number')} placeholder="e.g. 12/2A" className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Khata Number</label>
-                      <input type="text" placeholder="e.g. 458" className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
+                      <input value={form.khata} onChange={update('khata')} placeholder="e.g. 458" className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
                     </div>
                   </div>
                   <div className="flex justify-between pt-4">
                     <button type="button" onClick={() => setStep(3)} className="px-6 py-3 border border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors flex items-center gap-2">
                       <FiArrowLeft /> Back
                     </button>
-                    <button type="submit" className="px-8 py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary-dark transition-colors shadow-lg shadow-primary/25">
-                      Register Farm
+                    <button type="submit" disabled={loading} className="px-8 py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary-dark transition-colors shadow-lg shadow-primary/25 disabled:opacity-50 flex items-center gap-2">
+                      {loading ? <><FiLoader className="animate-spin" /> Registering...</> : 'Register Farm'}
                     </button>
                   </div>
                 </form>
