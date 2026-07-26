@@ -1,109 +1,53 @@
-import { createWorker } from 'tesseract.js'
+const API_BASE = import.meta.env.VITE_API_URL || ''
 
-let workerInstance = null
+export async function uploadDocumentForOCR(file) {
+  const token = localStorage.getItem('agrivism_token')
+  const formData = new FormData()
+  formData.append('file', file)
 
-async function getWorker() {
-  if (workerInstance) return workerInstance
-  try {
-    workerInstance = await createWorker('eng', 1, {
-      logger: () => {},
-    })
-    return workerInstance
-  } catch {
-    return null
+  const res = await fetch(`${API_BASE}/api/farm/ocr`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  })
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail || `OCR failed: ${res.status}`)
   }
+  return res.json()
 }
 
-export async function extractTextFromImage(file) {
-  const worker = await getWorker()
-  if (!worker) return ''
+export async function detectLocation(data) {
+  const token = localStorage.getItem('agrivism_token')
+  const res = await fetch(`${API_BASE}/api/farm/detect-location`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(data),
+  })
 
-  try {
-    const url = URL.createObjectURL(file)
-    const { data } = await worker.recognize(url)
-    URL.revokeObjectURL(url)
-    return data?.text || ''
-  } catch {
-    return ''
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail || `Detect failed: ${res.status}`)
   }
-}
-
-export function parseRORData(text) {
-  if (!text || !text.trim()) {
-    return { 'Status': 'No text detected' }
-  }
-
-  const full = text.replace(/\n/g, ' ').replace(/\s+/g, ' ')
-
-  const find = (patterns) => {
-    for (const p of patterns) {
-      const m = full.match(p)
-      if (m && m[1]) return m[1].trim()
-    }
-    return ''
-  }
-
-  const surveyNumber = find([
-    /(?:Survey\s*(?:No|Number|\.)\s*[:.]?\s*)([\d\/\.]+)/i,
-    /(?:Sy\.?\s*No\.?\s*[:.]?\s*)([\d\/\.]+)/i,
-    /(?:S\.?\s*No\.?\s*[:.]?\s*)([\d\/\.]+)/i,
-    /(?:Survey\s*)([\d\/]+[\d\/]*)/i,
-  ])
-
-  const khata = find([
-    /(?:Khata\s*(?:No|Number|\.|#)\s*[:.]?\s*)([\d\/\.]+)/i,
-    /(?:Gat\s*(?:No|Number)\s*[:.]?\s*)([\d\/\.]+)/i,
-    /(?:Patta\s*(?:No|Number)\s*[:.]?\s*)([\d\/\.]+)/i,
-  ])
-
-  const village = find([
-    /(?:Village\s*[:.]?\s*)([A-Za-z\s]+)/i,
-    /(?:Gram\s*[:.]?\s*)([A-Za-z\s]+)/i,
-    /(?:Mauza\s*[:.]?\s*)([A-Za-z\s]+)/i,
-  ])
-
-  const district = find([
-    /(?:District\s*[:.]?\s*)([A-Za-z\s]+)/i,
-    /(?:Dist\.?\s*[:.]?\s*)([A-Za-z\s]+)/i,
-    /(?:Zilla\s*[:.]?\s*)([A-Za-z\s]+)/i,
-  ])
-
-  const state = find([
-    /(?:State\s*[:.]?\s*)([A-Za-z\s]+)/i,
-    /(?:Pradesh\s*[:.]?\s*)([A-Za-z\s]+)/i,
-  ])
-
-  const area = find([
-    /(?:Area\s*[:.]?\s*)([\d\.]+\s*(?:Acres?|Hectares?|Ha|ac|ha))/i,
-    /([\d\.]+\s*(?:Acres?|Hectares?|Ha|ac|ha))/i,
-  ])
-
-  const ownerName = find([
-    /(?:Owner\s*(?:Name)?\s*[:.]?\s*)([A-Za-z\s.]+)/i,
-    /(?:Holder\s*(?:Name)?\s*[:.]?\s*)([A-Za-z\s.]+)/i,
-    /(?:Name\s*[:.]?\s*)([A-Za-z\s.]+)/i,
-  ])
-
-  return {
-    'Owner Name': ownerName || 'Not detected',
-    'Survey Number': surveyNumber || 'Not detected',
-    'Khata Number': khata || 'Not detected',
-    'Village': village || 'Not detected',
-    'District': district || 'Not detected',
-    'State': state || 'Not detected',
-    'Area': area || 'Not detected',
-  }
+  return res.json()
 }
 
 export function extractFormFromOCR(parsed) {
   const form = {}
   const map = {
-    'Survey Number': 'survey_number',
-    'Khata Number': 'khata',
-    'Village': 'village',
-    'District': 'district',
-    'State': 'state',
-    'Area': 'area',
+    survey_number: 'survey_number',
+    khata: 'khata',
+    village: 'village',
+    district: 'district',
+    state: 'state',
+    area: 'area',
+    soil_type: 'soil_type',
+    water_source: 'water_source',
+    owner_name: 'owner_name',
   }
   for (const [key, field] of Object.entries(map)) {
     const val = parsed[key]

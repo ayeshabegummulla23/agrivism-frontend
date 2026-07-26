@@ -6,7 +6,7 @@ import UploadCard from '../components/UploadCard'
 import MapPlaceholder from '../components/MapPlaceholder'
 import { FiCheckCircle, FiLoader, FiFileText, FiImage, FiMapPin, FiInfo } from 'react-icons/fi'
 import { registerFarm } from '../services/api'
-import { extractTextFromImage, parseRORData, extractFormFromOCR } from '../services/ocr'
+import { uploadDocumentForOCR, detectLocation, extractFormFromOCR } from '../services/ocr'
 import { geocodeLocation } from '../services/geocode'
 
 export default function RegisterFarm() {
@@ -48,44 +48,52 @@ export default function RegisterFarm() {
   const handleRORUpload = async (file) => {
     setRorFile(file)
     setOcrLoading(true)
-    setOcrStatus('Reading document with OCR...')
+    setOcrStatus('Uploading to server for OCR...')
     setExtractedData(null)
 
     try {
-      const text = await extractTextFromImage(file)
+      const ocrResult = await uploadDocumentForOCR(file)
+      const fields = ocrResult.fields || {}
+      const rawText = ocrResult.raw_text || ''
 
-      if (!text || !text.trim()) {
-        setOcrStatus('No text found in document. Please ensure the image is clear and readable.')
+      if (!rawText && Object.keys(fields).length === 0) {
+        setOcrStatus('No text found. Please ensure the image is clear and readable.')
         setExtractedData({ 'File': file.name, 'Status': 'No text detected' })
-        setOcrLoading(false)
         return
       }
 
-      const parsed = parseRORData(text)
-      setExtractedData(parsed)
+      const displayData = {
+        'Owner Name': fields.owner_name || 'Not detected',
+        'Survey Number': fields.survey_number || 'Not detected',
+        'Khata Number': fields.khata || 'Not detected',
+        'Village': fields.village || 'Not detected',
+        'District': fields.district || 'Not detected',
+        'State': fields.state || 'Not detected',
+        'Area': fields.area || 'Not detected',
+        'Soil Type': fields.soil_type || 'Not detected',
+        'Water Source': fields.water_source || 'Not detected',
+      }
+      setExtractedData(displayData)
 
-      const autoFill = extractFormFromOCR(parsed)
+      const autoFill = extractFormFromOCR(fields)
       setForm((prev) => ({ ...prev, ...autoFill }))
 
       const filledFields = Object.keys(autoFill).length
-      if (filledFields > 0) {
-        setOcrStatus(`Extracted ${filledFields} fields from document!`)
-      } else {
-        setOcrStatus('Text found but could not identify specific fields.')
-      }
+      setOcrStatus(`Extracted ${filledFields} fields from document!`)
 
       const village = autoFill.village || ''
       const district = autoFill.district || ''
       const state = autoFill.state || ''
       if (village || district) {
-        setGeoLoading(true)
-        setOcrStatus((prev) => prev + ' Locating farm on map...')
+        setOcrStatus('Document extracted. Locating farm on map...')
         await autoLocate(village, district, state)
-        setOcrStatus('Document extracted and farm located on map!')
+        setOcrStatus('Document read and farm located on map!')
+      } else {
+        setOcrStatus('Document read successfully. Enter location manually to locate on map.')
       }
-    } catch {
-      setOcrStatus('OCR processing failed. Please re-upload a clearer image.')
-      setExtractedData({ 'File': file.name, 'Status': 'OCR failed' })
+    } catch (err) {
+      setOcrStatus('OCR failed. Please re-upload a clearer image.')
+      setExtractedData({ 'File': file.name, 'Status': 'OCR failed: ' + (err.message || 'unknown') })
     } finally {
       setOcrLoading(false)
     }
@@ -144,13 +152,11 @@ export default function RegisterFarm() {
         <DashboardHeader title="Smart Land Registration" />
         <main className="flex-1 p-6 overflow-y-auto">
           <div className="max-w-4xl mx-auto space-y-6">
-            {/* Header */}
             <div className="text-center">
               <h2 className="text-xl font-bold text-gray-900">Land Registration</h2>
-              <p className="text-gray-500 text-sm mt-1">Upload your ROR 1B and Village/FMB Sketch — everything will be extracted and auto-filled</p>
+              <p className="text-gray-500 text-sm mt-1">Upload your ROR 1B — everything will be extracted and auto-filled</p>
             </div>
 
-            {/* Upload Section */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <h3 className="font-semibold text-gray-900 mb-4">Upload Documents</h3>
               <div className="grid sm:grid-cols-2 gap-6">
@@ -174,7 +180,6 @@ export default function RegisterFarm() {
                 </div>
               </div>
 
-              {/* Status */}
               {ocrLoading && (
                 <div className="mt-4 flex items-center gap-3 p-4 bg-blue-50 rounded-xl">
                   <FiLoader className="text-primary animate-spin text-xl shrink-0" />
@@ -207,12 +212,11 @@ export default function RegisterFarm() {
               {!rorFile && !ocrLoading && (
                 <div className="mt-4 flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
                   <FiInfo className="text-gray-400 text-xl shrink-0" />
-                  <p className="text-sm text-gray-500">Upload your ROR 1B document to auto-extract survey number, khata, village, district and locate your farm on the map.</p>
+                  <p className="text-sm text-gray-500">Upload your ROR 1B document — we'll auto-extract all details and locate your farm on the map.</p>
                 </div>
               )}
             </div>
 
-            {/* Extracted Details - Auto-filled */}
             {extractedData && (
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                 <h3 className="font-semibold text-gray-900 mb-4">Extracted Details (auto-filled from ROR 1B)</h3>
@@ -227,7 +231,6 @@ export default function RegisterFarm() {
               </div>
             )}
 
-            {/* Map */}
             {(mapCoords || rorFile) && (
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                 <div className="flex items-center gap-2 mb-3">
@@ -246,7 +249,6 @@ export default function RegisterFarm() {
               </div>
             )}
 
-            {/* Registration Form */}
             {rorFile && (
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                 <h3 className="font-semibold text-gray-900 mb-4">Farm Details</h3>
