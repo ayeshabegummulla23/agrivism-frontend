@@ -1,21 +1,35 @@
 let workerInstance = null
+let workerReady = null
 
 async function getWorker() {
   if (workerInstance) return workerInstance
-  const { createWorker } = await import('tesseract.js')
-  workerInstance = await createWorker()
-  await workerInstance.loadLanguage('eng')
-  await workerInstance.initialize('eng')
-  return workerInstance
+  if (workerReady) return workerReady
+
+  workerReady = (async () => {
+    try {
+      const { createWorker } = await import('tesseract.js')
+      const worker = await createWorker('eng', 1, {
+        logger: () => {},
+      })
+      workerInstance = worker
+      return worker
+    } catch {
+      return null
+    }
+  })()
+
+  return workerReady
 }
 
 export async function extractTextFromImage(file) {
   try {
     const worker = await getWorker()
+    if (!worker) return ''
+
     const url = URL.createObjectURL(file)
     const { data } = await worker.recognize(url)
     URL.revokeObjectURL(url)
-    return data.text || ''
+    return data?.text || ''
   } catch {
     return ''
   }
@@ -24,7 +38,7 @@ export async function extractTextFromImage(file) {
 export function parseRORData(text) {
   if (!text || !text.trim()) {
     return {
-      'Status': 'No text found — please fill manually',
+      'Status': 'No text detected — please fill manually',
     }
   }
 
@@ -39,78 +53,31 @@ export function parseRORData(text) {
     return ''
   }
 
-  const surveyNumber = find([
-    /(?:Survey\s*(?:No|Number|\.)\s*[:.]?\s*)([\d\/\.]+)/i,
-    /(?:Sy\.?\s*No\.?\s*[:.]?\s*)([\d\/\.]+)/i,
-    /(?:S\.?\s*No\.?\s*[:.]?\s*)([\d\/\.]+)/i,
-    /(\/\d+[\d\/]*)/,
-  ])
-
-  const khata = find([
-    /(?:Khata\s*(?:No|Number|\.|#)\s*[:.]?\s*)([\d\/\.]+)/i,
-    /(?:Gat\s*(?:No|Number)\s*[:.]?\s*)([\d\/\.]+)/i,
-    /(?:Patta\s*(?:No|Number)\s*[:.]?\s*)([\d\/\.]+)/i,
-  ])
-
-  const village = find([
-    /(?:Village\s*[:.]?\s*)([A-Za-z\s]+)/i,
-    /(?:Gram\s*[:.]?\s*)([A-Za-z\s]+)/i,
-    /(?:Mauza\s*[:.]?\s*)([A-Za-z\s]+)/i,
-  ])
-
-  const district = find([
-    /(?:District\s*[:.]?\s*)([A-Za-z\s]+)/i,
-    /(?:Dist\.?\s*[:.]?\s*)([A-Za-z\s]+)/i,
-    /(?:Zilla\s*[:.]?\s*)([A-Za-z\s]+)/i,
-  ])
-
-  const state = find([
-    /(?:State\s*[:.]?\s*)([A-Za-z\s]+)/i,
-    /(?:Pradesh\s*[:.]?\s*)([A-Za-z\s]+)/i,
-  ])
-
-  const area = find([
-    /(?:Area\s*[:.]?\s*)([\d\.]+\s*(?:Acres?|Hectares?|Ha|ac|ha))/i,
-    /([\d\.]+\s*(?:Acres?|Hectares?|Ha|ac|ha))/i,
-  ])
-
-  const ownerName = find([
-    /(?:Owner\s*(?:Name)?\s*[:.]?\s*)([A-Za-z\s.]+)/i,
-    /(?:Holder\s*(?:Name)?\s*[:.]?\s*)([A-Za-z\s.]+)/i,
-    /(?:Applicant\s*[:.]?\s*)([A-Za-z\s.]+)/i,
-    /(?:Name\s*[:.]?\s*)([A-Za-z\s.]+)/i,
-  ])
-
   return {
-    'Owner Name': ownerName || 'Not detected',
-    'Survey Number': surveyNumber || 'Not detected',
-    'Khata Number': khata || 'Not detected',
-    'Village': village || 'Not detected',
-    'District': district || 'Not detected',
-    'State': state || 'Not detected',
-    'Area': area || 'Not detected',
+    'Owner Name': find([/(?:Owner\s*(?:Name)?\s*[:.]?\s*)([A-Za-z\s.]+)/i, /(?:Holder\s*(?:Name)?\s*[:.]?\s*)([A-Za-z\s.]+)/i, /(?:Name\s*[:.]?\s*)([A-Za-z\s.]+)/i]) || 'Not detected',
+    'Survey Number': find([/(?:Survey\s*(?:No|Number|\.)\s*[:.]?\s*)([\d\/\.]+)/i, /(?:Sy\.?\s*No\.?\s*[:.]?\s*)([\d\/\.]+)/i, /(\/\d+[\d\/]*)/]) || 'Not detected',
+    'Khata Number': find([/(?:Khata\s*(?:No|Number|\.|#)\s*[:.]?\s*)([\d\/\.]+)/i, /(?:Gat\s*(?:No|Number)\s*[:.]?\s*)([\d\/\.]+)/i]) || 'Not detected',
+    'Village': find([/(?:Village\s*[:.]?\s*)([A-Za-z\s]+)/i, /(?:Gram\s*[:.]?\s*)([A-Za-z\s]+)/i]) || 'Not detected',
+    'District': find([/(?:District\s*[:.]?\s*)([A-Za-z\s]+)/i, /(?:Dist\.?\s*[:.]?\s*)([A-Za-z\s]+)/i]) || 'Not detected',
+    'State': find([/(?:State\s*[:.]?\s*)([A-Za-z\s]+)/i, /(?:Pradesh\s*[:.]?\s*)([A-Za-z\s]+)/i]) || 'Not detected',
+    'Area': find([/(?:Area\s*[:.]?\s*)([\d\.]+\s*(?:Acres?|Hectares?|Ha|ac|ha))/i, /([\d\.]+\s*(?:Acres?|Hectares?|Ha|ac|ha))/i]) || 'Not detected',
   }
 }
 
 export function extractFormFromOCR(parsed) {
   const form = {}
-  if (parsed['Survey Number'] && parsed['Survey Number'] !== 'Not detected') {
-    form.survey_number = parsed['Survey Number']
+  const map = {
+    'Survey Number': 'survey_number',
+    'Khata Number': 'khata',
+    'Village': 'village',
+    'District': 'district',
+    'State': 'state',
+    'Area': 'area',
   }
-  if (parsed['Khata Number'] && parsed['Khata Number'] !== 'Not detected') {
-    form.khata = parsed['Khata Number']
-  }
-  if (parsed['Village'] && parsed['Village'] !== 'Not detected') {
-    form.village = parsed['Village']
-  }
-  if (parsed['District'] && parsed['District'] !== 'Not detected') {
-    form.district = parsed['District']
-  }
-  if (parsed['State'] && parsed['State'] !== 'Not detected') {
-    form.state = parsed['State']
-  }
-  if (parsed['Area'] && parsed['Area'] !== 'Not detected') {
-    form.area = parsed['Area']
+  for (const [key, field] of Object.entries(map)) {
+    if (parsed[key] && parsed[key] !== 'Not detected' && parsed[key] !== 'No text detected — please fill manually') {
+      form[field] = parsed[key]
+    }
   }
   return form
 }
