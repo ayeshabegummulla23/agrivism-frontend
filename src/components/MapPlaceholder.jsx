@@ -65,6 +65,11 @@ function LeafletMap({ center, onPositionChange, height }) {
 
     return () => {
       cancelled = true
+      if (mapRef.current) {
+        mapRef.current.remove()
+        mapRef.current = null
+        markerRef.current = null
+      }
     }
   }, [])
 
