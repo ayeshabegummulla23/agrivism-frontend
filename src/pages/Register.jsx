@@ -136,8 +136,8 @@ export default function Register() {
             <label className="flex items-start gap-2 cursor-pointer">
               <input type="checkbox" required className="w-4 h-4 mt-0.5 text-primary border-gray-300 rounded focus:ring-primary" />
               <span className="text-sm text-gray-500">
-                I agree to the <a href="#" className="text-primary hover:underline">Terms of Service</a> and{' '}
-                <a href="#" className="text-primary hover:underline">Privacy Policy</a>
+                I agree to the <span className="text-primary hover:underline cursor-pointer" onClick={() => alert('Terms of Service coming soon!')}>Terms of Service</span> and{' '}
+                <span className="text-primary hover:underline cursor-pointer" onClick={() => alert('Privacy Policy coming soon!')}>Privacy Policy</span>
               </span>
             </label>
 

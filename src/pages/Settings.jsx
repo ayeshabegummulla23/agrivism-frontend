@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import Sidebar from '../components/Sidebar'
 import DashboardHeader from '../components/DashboardHeader'
-import { FiUser, FiBell, FiGlobe, FiMoon, FiChevronRight, FiLogOut } from 'react-icons/fi'
+import { FiUser, FiBell, FiGlobe, FiMoon, FiChevronRight, FiLogOut, FiCheck } from 'react-icons/fi'
 import { useLanguage } from '../i18n/useLanguage'
 import { getCurrentUser, logout } from '../services/api'
 import { useNavigate } from 'react-router-dom'
@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom'
 export default function Settings() {
   const [darkMode, setDarkMode] = useState(false)
   const [notifications, setNotifications] = useState(true)
+  const [saved, setSaved] = useState(false)
   const { lang, changeLang, t, languages } = useLanguage()
   const navigate = useNavigate()
   const user = getCurrentUser()
@@ -21,6 +22,11 @@ export default function Settings() {
   const handleLogout = () => {
     logout()
     navigate('/login')
+  }
+
+  const handleSave = () => {
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
   }
 
   return (
@@ -45,7 +51,9 @@ export default function Settings() {
                     {phone && <p className="text-sm text-gray-500">{phone}</p>}
                   </div>
                 </div>
-                <button className="text-primary text-sm font-medium hover:underline">{t('common.save')}</button>
+                <button onClick={handleSave} className="flex items-center gap-1 text-primary text-sm font-medium hover:underline">
+                  {saved ? <><FiCheck className="text-green-500" /> Saved!</> : t('common.save')}
+                </button>
               </div>
             </div>
 
@@ -108,9 +116,12 @@ export default function Settings() {
 
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
               <h3 className="font-semibold text-gray-900">{t('settings.account')}</h3>
-              {['Change Password', 'Privacy Settings'].map((item) => (
-                <button key={item} className="w-full flex items-center justify-between py-3 border-b border-gray-50 last:border-0 hover:text-primary transition-colors">
-                  <span className="text-sm text-gray-700">{item}</span>
+              {[
+                { label: 'Change Password', action: () => alert('Change Password feature coming soon!') },
+                { label: 'Privacy Settings', action: () => alert('Privacy Settings feature coming soon!') },
+              ].map((item) => (
+                <button key={item.label} onClick={item.action} className="w-full flex items-center justify-between py-3 border-b border-gray-50 last:border-0 hover:text-primary transition-colors">
+                  <span className="text-sm text-gray-700">{item.label}</span>
                   <FiChevronRight className="text-gray-400" />
                 </button>
               ))}

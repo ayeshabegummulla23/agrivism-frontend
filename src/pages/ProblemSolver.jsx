@@ -17,15 +17,21 @@ export default function ProblemSolver() {
   const [diagnosis, setDiagnosis] = useState(null)
   const [loading, setLoading] = useState(false)
   const [weather, setWeather] = useState(null)
+  const [uploadedFile, setUploadedFile] = useState(null)
 
   useEffect(() => {
     getDashboardWeather().then(setWeather).catch(() => {})
   }, [])
 
+  const handleFileUpload = (file) => {
+    setUploadedFile(file)
+  }
+
   const handleDiagnose = async () => {
     setLoading(true)
     try {
-      const data = await detectDisease('uploaded-image.jpg', selectedSymptom || 'unknown')
+      const fileName = uploadedFile ? uploadedFile.name : 'uploaded-image.jpg'
+      const data = await detectDisease(fileName, selectedSymptom || 'unknown')
       setDiagnosis({
         problem: data.disease,
         severity: data.severity.charAt(0).toUpperCase() + data.severity.slice(1),
@@ -79,7 +85,13 @@ export default function ProblemSolver() {
             {/* Upload Image */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <h3 className="font-semibold text-gray-900 mb-4">Upload Image</h3>
-              <UploadCard title="Upload Crop Photo" subtitle="Take a clear photo of the affected area" />
+              <UploadCard title="Upload Crop Photo" subtitle="Take a clear photo of the affected area" onUpload={handleFileUpload} />
+              {uploadedFile && (
+                <div className="mt-3 flex items-center gap-2 p-2 bg-green-50 rounded-xl">
+                  <FiFileText className="text-green-600" />
+                  <span className="text-sm text-green-700 truncate">{uploadedFile.name}</span>
+                </div>
+              )}
             </div>
 
             <button

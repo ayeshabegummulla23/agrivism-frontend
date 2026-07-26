@@ -91,7 +91,7 @@ export default function Login() {
                 />
                 <span className="text-sm text-gray-600">Remember Me</span>
               </label>
-              <a href="#" className="text-sm text-primary hover:underline">Forgot Password?</a>
+              <span className="text-sm text-primary hover:underline cursor-pointer" onClick={() => alert('Password reset feature coming soon!')}>Forgot Password?</span>
             </div>
 
             <button

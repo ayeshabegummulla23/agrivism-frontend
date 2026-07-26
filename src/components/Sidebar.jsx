@@ -8,6 +8,7 @@ import {
 } from 'react-icons/fi'
 import { GiPlantRoots } from 'react-icons/gi'
 import { useLanguage } from '../i18n/useLanguage'
+import { logout as apiLogout } from '../services/api'
 
 const menuGroups = (t) => [
   { type: 'item', icon: <FiHome />, label: t('nav.dashboard'), path: '/dashboard' },
@@ -254,7 +255,7 @@ export default function Sidebar() {
 
         <div className="p-3 border-t border-gray-100">
           <button
-            onClick={() => navigate('/')}
+            onClick={() => { apiLogout(); navigate('/login') }}
             className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-red-50 hover:text-red-600 transition-all w-full ${
               collapsed ? 'justify-center' : ''
             }`}

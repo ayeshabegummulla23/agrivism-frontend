@@ -5,7 +5,7 @@ import DashboardHeader from '../components/DashboardHeader'
 import UploadCard from '../components/UploadCard'
 import OCRPreviewCard from '../components/OCRPreviewCard'
 import MapPlaceholder from '../components/MapPlaceholder'
-import { FiCheckCircle, FiArrowRight, FiArrowLeft, FiLoader } from 'react-icons/fi'
+import { FiCheckCircle, FiArrowRight, FiArrowLeft, FiLoader, FiFileText, FiImage } from 'react-icons/fi'
 import { registerFarm } from '../services/api'
 
 export default function RegisterFarm() {
@@ -13,6 +13,8 @@ export default function RegisterFarm() {
   const [extractedData, setExtractedData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [rorFile, setRorFile] = useState(null)
+  const [fmbFile, setFmbFile] = useState(null)
   const navigate = useNavigate()
 
   const [form, setForm] = useState({
@@ -23,16 +25,17 @@ export default function RegisterFarm() {
 
   const update = (field) => (e) => setForm((prev) => ({ ...prev, [field]: e.target.value }))
 
-  const handleRORUpload = () => {
+  const handleRORUpload = (file) => {
+    setRorFile(file)
     setExtractedData({
-      'Owner Name': '',
-      'Survey Number': '',
-      'Khata Number': '',
-      'Village': '',
-      'Area': '',
-      'District': '',
-      'State': '',
+      'File Name': file.name,
+      'File Size': `${(file.size / 1024).toFixed(1)} KB`,
+      'Status': 'Ready for review',
     })
+  }
+
+  const handleFMBUpload = (file) => {
+    setFmbFile(file)
   }
 
   const handleSubmit = async (e) => {
@@ -79,10 +82,24 @@ export default function RegisterFarm() {
               <h2 className="text-xl font-bold text-gray-900 text-center">Upload Documents</h2>
               <p className="text-gray-500 text-center text-sm">Upload your ROR 1B and Village/FMB Sketch for AI-powered extraction</p>
               <div className="grid sm:grid-cols-2 gap-6">
-                <div onClick={handleRORUpload}>
+                <div>
                   <UploadCard title="Upload ROR 1B" subtitle="PDF, JPG, PNG (Max 10MB)" onUpload={handleRORUpload} />
+                  {rorFile && (
+                    <div className="mt-2 flex items-center gap-2 p-2 bg-green-50 rounded-xl">
+                      <FiFileText className="text-green-600" />
+                      <span className="text-sm text-green-700 truncate">{rorFile.name}</span>
+                    </div>
+                  )}
                 </div>
-                <UploadCard title="Upload Village/FMB Sketch" subtitle="PDF, JPG, PNG (Max 10MB)" />
+                <div>
+                  <UploadCard title="Upload Village/FMB Sketch" subtitle="PDF, JPG, PNG (Max 10MB)" onUpload={handleFMBUpload} />
+                  {fmbFile && (
+                    <div className="mt-2 flex items-center gap-2 p-2 bg-green-50 rounded-xl">
+                      <FiImage className="text-green-600" />
+                      <span className="text-sm text-green-700 truncate">{fmbFile.name}</span>
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="flex justify-end">
                 <button onClick={() => setStep(2)} className="px-6 py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary-dark transition-colors flex items-center gap-2">

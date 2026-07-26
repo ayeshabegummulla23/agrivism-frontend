@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
 import DashboardHeader from '../components/DashboardHeader'
 import UploadCard from '../components/UploadCard'
-import { FiCheckCircle, FiShield, FiActivity, FiAlertTriangle, FiCloud, FiWind, FiDroplet, FiSun, FiClock, FiInfo, FiLoader } from 'react-icons/fi'
+import { FiCheckCircle, FiShield, FiActivity, FiAlertTriangle, FiCloud, FiWind, FiDroplet, FiSun, FiClock, FiInfo, FiLoader, FiFileText } from 'react-icons/fi'
 import { detectDisease, getDashboardWeather } from '../services/api'
 
 export default function DiseaseDetection() {
@@ -10,15 +10,17 @@ export default function DiseaseDetection() {
   const [prediction, setPrediction] = useState(null)
   const [loading, setLoading] = useState(false)
   const [todayWeather, setTodayWeather] = useState(null)
+  const [uploadedFile, setUploadedFile] = useState(null)
 
   useEffect(() => {
     getDashboardWeather().then(setTodayWeather).catch(() => {})
   }, [])
 
-  const handleUpload = async () => {
+  const handleUpload = async (file) => {
+    setUploadedFile(file)
     setLoading(true)
     try {
-      const data = await detectDisease('uploaded-image.jpg', 'unknown')
+      const data = await detectDisease(file.name, 'unknown')
       setPrediction({
         disease: data.disease,
         confidence: Math.round(data.confidence * 100),
@@ -53,6 +55,12 @@ export default function DiseaseDetection() {
               <h3 className="font-semibold text-gray-900 mb-2">Upload Crop Image</h3>
               <p className="text-sm text-gray-500 mb-4">Take a clear, close-up photo of the affected area for best results</p>
               <UploadCard title="Upload Image" subtitle="JPG, PNG (Max 10MB)" onUpload={handleUpload} />
+              {uploadedFile && (
+                <div className="mt-3 flex items-center gap-2 p-2 bg-green-50 rounded-xl">
+                  <FiFileText className="text-green-600" />
+                  <span className="text-sm text-green-700 truncate">{uploadedFile.name}</span>
+                </div>
+              )}
               {loading && (
                 <div className="flex items-center gap-2 mt-4 text-primary">
                   <FiLoader className="animate-spin" />
