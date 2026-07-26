@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
-import { FiMapPin, FiCrosshair } from 'react-icons/fi'
+import { FiMapPin, FiCrosshair, FiLoader } from 'react-icons/fi'
 
 const defaultPos = [12.2588, 78.5508]
 
 function LeafletMap({ position, setPosition, height }) {
-  const mapRef = useRef(null)
   const mapInstance = useRef(null)
   const markerRef = useRef(null)
+  const initialized = useRef(false)
 
   useEffect(() => {
     let cancelled = false
@@ -16,11 +16,12 @@ function LeafletMap({ position, setPosition, height }) {
         const L = await import('leaflet')
 
         const container = document.getElementById('farm-map')
-        if (!container || mapInstance.current) return
+        if (!container || initialized.current) return
+        initialized.current = true
 
         const map = L.map(container, {
           center: position,
-          zoom: 13,
+          zoom: position !== defaultPos ? 15 : 11,
           zoomControl: true,
         })
 
@@ -30,9 +31,9 @@ function LeafletMap({ position, setPosition, height }) {
 
         const icon = L.divIcon({
           className: 'custom-marker',
-          html: `<div style="width:24px;height:24px;background:#16a34a;border:3px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>`,
-          iconSize: [24, 24],
-          iconAnchor: [12, 12],
+          html: `<div style="width:28px;height:28px;background:#16a34a;border:3px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;"><div style="width:8px;height:8px;background:white;border-radius:50%;"></div></div>`,
+          iconSize: [28, 28],
+          iconAnchor: [14, 14],
         })
 
         markerRef.current = L.marker(position, { icon }).addTo(map)
@@ -42,6 +43,7 @@ function LeafletMap({ position, setPosition, height }) {
           const newPos = [e.latlng.lat, e.latlng.lng]
           setPosition(newPos)
           markerRef.current.setLatLng(newPos)
+          map.setView(newPos, 15)
         })
 
         mapInstance.current = map
@@ -57,6 +59,7 @@ function LeafletMap({ position, setPosition, height }) {
       if (mapInstance.current) {
         mapInstance.current.remove()
         mapInstance.current = null
+        initialized.current = false
       }
     }
   }, [])
@@ -66,6 +69,17 @@ function LeafletMap({ position, setPosition, height }) {
       mapInstance.current.setView(position, 15)
       if (markerRef.current) {
         markerRef.current.setLatLng(position)
+      } else {
+        const L = window.L
+        if (L) {
+          const icon = L.divIcon({
+            className: 'custom-marker',
+            html: `<div style="width:28px;height:28px;background:#16a34a;border:3px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;"><div style="width:8px;height:8px;background:white;border-radius:50%;"></div></div>`,
+            iconSize: [28, 28],
+            iconAnchor: [14, 14],
+          })
+          markerRef.current = L.marker(position, { icon }).addTo(mapInstance.current)
+        }
       }
     }
   }, [position])
@@ -100,8 +114,14 @@ function LeafletMap({ position, setPosition, height }) {
   )
 }
 
-export default function MapPlaceholder({ height = 'h-64', onLocationSelect, initialPosition }) {
+export default function MapPlaceholder({ height = 'h-64', onLocationSelect, initialPosition, autoLocate }) {
   const [position, setPosition] = useState(initialPosition || defaultPos)
+
+  useEffect(() => {
+    if (autoLocate) {
+      setPosition(autoLocate)
+    }
+  }, [autoLocate])
 
   useEffect(() => {
     if (onLocationSelect) {
