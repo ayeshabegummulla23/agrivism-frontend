@@ -7,14 +7,17 @@ import OCRPreviewCard from '../components/OCRPreviewCard'
 import MapPlaceholder from '../components/MapPlaceholder'
 import { FiCheckCircle, FiArrowRight, FiArrowLeft, FiLoader, FiFileText, FiImage } from 'react-icons/fi'
 import { registerFarm } from '../services/api'
+import { extractTextFromImage, parseRORData, extractFormFromOCR } from '../services/ocr'
 
 export default function RegisterFarm() {
   const [step, setStep] = useState(1)
   const [extractedData, setExtractedData] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [ocrLoading, setOcrLoading] = useState(false)
   const [error, setError] = useState('')
   const [rorFile, setRorFile] = useState(null)
   const [fmbFile, setFmbFile] = useState(null)
+  const [mapPosition, setMapPosition] = useState(null)
   const navigate = useNavigate()
 
   const [form, setForm] = useState({
@@ -25,13 +28,28 @@ export default function RegisterFarm() {
 
   const update = (field) => (e) => setForm((prev) => ({ ...prev, [field]: e.target.value }))
 
-  const handleRORUpload = (file) => {
+  const applyOCRToForm = (ocrForm) => {
+    setForm((prev) => ({ ...prev, ...ocrForm }))
+  }
+
+  const handleRORUpload = async (file) => {
     setRorFile(file)
-    setExtractedData({
-      'File Name': file.name,
-      'File Size': `${(file.size / 1024).toFixed(1)} KB`,
-      'Status': 'Ready for review',
-    })
+    setOcrLoading(true)
+    setExtractedData(null)
+    try {
+      const text = await extractTextFromImage(file)
+      const parsed = parseRORData(text)
+      setExtractedData(parsed)
+      const autoFill = extractFormFromOCR(parsed)
+      applyOCRToForm(autoFill)
+    } catch {
+      setExtractedData({
+        'File Name': file.name,
+        'Status': 'OCR failed — please fill manually',
+      })
+    } finally {
+      setOcrLoading(false)
+    }
   }
 
   const handleFMBUpload = (file) => {
@@ -101,6 +119,17 @@ export default function RegisterFarm() {
                   )}
                 </div>
               </div>
+
+              {ocrLoading && (
+                <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-xl">
+                  <FiLoader className="text-primary animate-spin text-xl" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Extracting text from ROR 1B...</p>
+                    <p className="text-xs text-gray-500">OCR is processing your document, this may take a moment</p>
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-end">
                 <button onClick={() => setStep(2)} className="px-6 py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary-dark transition-colors flex items-center gap-2">
                   Next <FiArrowRight />
@@ -113,25 +142,43 @@ export default function RegisterFarm() {
           {step === 2 && (
             <div className="max-w-3xl mx-auto space-y-6">
               <h2 className="text-xl font-bold text-gray-900 text-center">Document Information</h2>
-              <p className="text-gray-500 text-center text-sm">Review extracted data or fill in manually</p>
+              <p className="text-gray-500 text-center text-sm">
+                {extractedData ? 'Review extracted data or edit below' : 'Fill in details manually'}
+              </p>
 
-              {extractedData ? (
-                <OCRPreviewCard data={extractedData} />
-              ) : (
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                  <p className="text-sm text-gray-500 mb-4">No document uploaded yet. Fill in details manually:</p>
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Survey Number</label>
-                      <input value={form.survey_number} onChange={update('survey_number')} placeholder="e.g. 12/2A" className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Khata Number</label>
-                      <input value={form.khata} onChange={update('khata')} placeholder="e.g. 458" className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
-                    </div>
+              {extractedData && <OCRPreviewCard data={extractedData} />}
+
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                <p className="text-sm text-gray-500 mb-4">
+                  {extractedData ? 'Edit extracted fields or fill in missing details:' : 'Fill in details manually:'}
+                </p>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Survey Number</label>
+                    <input value={form.survey_number} onChange={update('survey_number')} placeholder="e.g. 12/2A" className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Khata Number</label>
+                    <input value={form.khata} onChange={update('khata')} placeholder="e.g. 458" className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Village</label>
+                    <input value={form.village} onChange={update('village')} placeholder="e.g. Kaveripattinam" className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">District</label>
+                    <input value={form.district} onChange={update('district')} placeholder="e.g. Krishnagiri" className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+                    <input value={form.state} onChange={update('state')} placeholder="e.g. Tamil Nadu" className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Area</label>
+                    <input value={form.area} onChange={update('area')} placeholder="e.g. 2.5 Acres" className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
                   </div>
                 </div>
-              )}
+              </div>
 
               <div className="flex justify-between">
                 <button onClick={() => setStep(1)} className="px-6 py-3 border border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors flex items-center gap-2">
@@ -148,8 +195,15 @@ export default function RegisterFarm() {
           {step === 3 && (
             <div className="max-w-4xl mx-auto space-y-6">
               <h2 className="text-xl font-bold text-gray-900 text-center">Confirm Farm Location</h2>
-              <p className="text-gray-500 text-center text-sm">Pin your farm location on the map</p>
-              <MapPlaceholder height="h-96" />
+              <p className="text-gray-500 text-center text-sm">Click on the map to pin your farm location</p>
+              <MapPlaceholder height="h-96" onLocationSelect={setMapPosition} initialPosition={mapPosition} />
+              {mapPosition && (
+                <div className="bg-green-50 rounded-xl p-3 text-center">
+                  <p className="text-sm text-green-700">
+                    Location pinned: {mapPosition[0].toFixed(4)}, {mapPosition[1].toFixed(4)}
+                  </p>
+                </div>
+              )}
               <div className="flex justify-between">
                 <button onClick={() => setStep(2)} className="px-6 py-3 border border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors flex items-center gap-2">
                   <FiArrowLeft /> Back

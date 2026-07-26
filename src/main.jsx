@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import { LanguageProvider } from './i18n/LanguageProvider'
 import App from './App.jsx'
 import './index.css'
+import 'leaflet/dist/leaflet.css'
 
 const basename = import.meta.env.MODE === 'production' ? '/agrivism-frontend' : ''
 
