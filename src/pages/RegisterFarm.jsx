@@ -200,7 +200,7 @@ export default function RegisterFarm() {
               {mapPosition && (
                 <div className="bg-green-50 rounded-xl p-3 text-center">
                   <p className="text-sm text-green-700">
-                    Location pinned: {mapPosition[0].toFixed(4)}, {mapPosition[1].toFixed(4)}
+                    Location pinned: {mapPosition.lat?.toFixed(4)}, {mapPosition.lng?.toFixed(4)}
                   </p>
                 </div>
               )}
