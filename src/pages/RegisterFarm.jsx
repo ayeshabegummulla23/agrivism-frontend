@@ -6,7 +6,7 @@ import UploadCard from '../components/UploadCard'
 import MapPlaceholder from '../components/MapPlaceholder'
 import { FiCheckCircle, FiLoader, FiFileText, FiImage, FiMapPin, FiInfo } from 'react-icons/fi'
 import { registerFarm } from '../services/api'
-import { uploadDocumentForOCR, detectLocation, extractFormFromOCR } from '../services/ocr'
+import { uploadDocumentForOCR, detectLocation, extractFormFromOCR, lookupLandRecords } from '../services/ocr'
 import { geocodeLocation } from '../services/geocode'
 
 export default function RegisterFarm() {
@@ -89,6 +89,46 @@ export default function RegisterFarm() {
 
       const filledFields = Object.keys(autoFill).length
       setOcrStatus(`Extracted ${filledFields} fields from document!`)
+
+      if (autoFill.survey_number) {
+        setOcrStatus('Looking up land records from government portal...')
+        try {
+          const portalData = await lookupLandRecords(autoFill.survey_number, {
+            district: autoFill.district || '',
+            mandal: '',
+            village: autoFill.village || '',
+            state: autoFill.state || '',
+          })
+
+          if (portalData && portalData.source !== 'demo') {
+            const portalFill = {}
+            if (portalData.owner_name) portalFill.owner_name = portalData.owner_name
+            if (portalData.survey_number) portalFill.survey_number = portalData.survey_number
+            if (portalData.khata) portalFill.khata = portalData.khata
+            if (portalData.area) portalFill.area = portalData.area
+            if (portalData.village) portalFill.village = portalData.village
+            if (portalData.district) portalFill.district = portalData.district
+            if (portalData.state) portalFill.state = portalData.state
+            if (portalData.soil_type) portalFill.soil_type = portalData.soil_type
+            if (portalData.water_source) portalFill.water_source = portalData.water_source
+
+            setForm((prev) => ({ ...prev, ...portalFill }))
+
+            const displayUpdate = {}
+            if (portalData.owner_name) displayUpdate['Owner Name'] = portalData.owner_name
+            if (portalData.survey_number) displayUpdate['Survey Number'] = portalData.survey_number
+            if (portalData.khata) displayUpdate['Khata Number'] = portalData.khata
+            if (portalData.area) displayUpdate['Area'] = portalData.area
+            if (portalData.soil_type) displayUpdate['Soil Type'] = portalData.soil_type
+            if (portalData.water_source) displayUpdate['Water Source'] = portalData.water_source
+            if (Object.keys(displayUpdate).length > 0) {
+              setExtractedData((prev) => ({ ...prev, ...displayUpdate }))
+            }
+          }
+        } catch {
+          // Portal lookup failed — OCR data is still valid
+        }
+      }
 
       const village = autoFill.village || ''
       const district = autoFill.district || ''

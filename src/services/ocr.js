@@ -57,3 +57,21 @@ export function extractFormFromOCR(parsed) {
   }
   return form
 }
+
+export async function lookupLandRecords(surveyNumber, { district = '', mandal = '', village = '', state = '' } = {}) {
+  const token = localStorage.getItem('agrivism_token')
+  const res = await fetch(`${API_BASE}/api/farm/lookup`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ survey_number: surveyNumber, district, mandal, village, state }),
+  })
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail || `Lookup failed: ${res.status}`)
+  }
+  return res.json()
+}
