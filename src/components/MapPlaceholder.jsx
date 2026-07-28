@@ -46,9 +46,9 @@ function LeafletMap({ center, onPositionChange, height }) {
           zoomControl: true,
         })
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '&copy; OpenStreetMap contributors',
-          maxZoom: 19,
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+          attribution: '&copy; Esri WorldImagery',
+          maxZoom: 18,
         }).addTo(map)
 
         const icon = L.divIcon({
